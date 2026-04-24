@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart Attendance Dashboard{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header>
+        <h1>Smart Attendance - Quản lý Điểm danh</h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div style="text-align: right;">
+                <div style="font-weight: 600; font-size: 0.9rem;">{{ session.get('name', 'User') }}</div>
+                <div style="font-size: 0.7rem; text-transform: uppercase; opacity: 0.8;">{{ session.get('role', '') }}</div>
+            </div>
+            <div class="status-badge registered" style="font-size: 0.85rem;">Hệ thống AI: Hoạt động</div>
+        </div>
+    </header>
+
+    <div class="app-layout">
+        <!-- Main Content Area -->
+        <main class="main-area">
+            {% block content %}
+            {% endblock %}
+        </main>
+
+        <!-- Right Sidebar Navigation -->
+        <aside class="right-sidebar" id="sidebar">
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Thu nhỏ/Mở rộng menu">
+                <span id="toggle-icon">▶</span>
+            </button>
+            <div class="sidebar-title">Menu Công Cụ</div>
+            <ul class="sidebar-menu">
+                {% if session.get('role') == 'admin' %}
+                <li>
+                    <a href="{{ url_for('admin.dashboard') }}" class="{% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+                        <i>🏠</i> <span>Quản trị hệ thống</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin.settings_page') }}" class="{% if request.endpoint == 'admin.settings_page' %}active{% endif %}">
+                        <i>⚙️</i> <span>Cấu hình hệ thống</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin.academic_page') }}" class="{% if request.endpoint == 'admin.academic_page' %}active{% endif %}">
+                        <i>🎓</i> <span>Quản lý Học thuật</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% if session.get('role') == 'lecturer' %}
+                <li>
+                    <a href="{{ url_for('attendance.index') }}" class="{% if request.endpoint == 'attendance.index' %}active{% endif %}">
+                        <i>🏠</i> <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('enroll.enroll_page') }}" class="{% if request.endpoint == 'enroll.enroll_page' %}active{% endif %}">
+                        <i>👤</i> <span>Đăng ký Sinh viên</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('attendance.reports') }}" class="{% if request.endpoint == 'attendance.reports' %}active{% endif %}">
+                        <i>📊</i> <span>Báo cáo & Thống kê</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <li style="margin-top: auto; border-top: 1px solid var(--border-color);">
+                    <a href="{{ url_for('auth.logout') }}" style="color: var(--danger);">
+                        <i>🚪</i> <span>Đăng xuất</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('toggle-icon');
+            sidebar.classList.toggle('collapsed');
+            
+            if (sidebar.classList.contains('collapsed')) {
+                icon.innerText = '◀';
+                localStorage.setItem('sidebar-collapsed', 'true');
+            } else {
+                icon.innerText = '▶';
+                localStorage.setItem('sidebar-collapsed', 'false');
+            }
+        }
+
+        // Restore state on load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('sidebar-collapsed') === 'true') {
+                document.getElementById('sidebar').classList.add('collapsed');
+                document.getElementById('toggle-icon').innerText = '◀';
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

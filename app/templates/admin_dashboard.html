@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Smart Attendance{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header-row" style="margin-bottom: 24px;">
+        <h2 style="border-bottom: none; margin-bottom: 0;">Hệ thống Quản trị</h2>
+        <div class="admin-actions">
+            <button class="btn btn-primary" onclick="openModal('lecturerModal')">+ Giảng viên mới</button>
+            <button class="btn btn-success" onclick="openModal('classModal')">+ Lớp học mới</button>
+        </div>
+    </div>
+
+    <div class="admin-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- Quản lý Giảng viên -->
+        <div class="card" style="display: flex; flex-direction: column;">
+            <div style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <h3 style="font-size: 1.1rem; color: var(--primary);">Quản lý Giảng viên</h3>
+            </div>
+            <div class="table-wrapper" style="flex: 1;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tên đăng nhập</th>
+                            <th>Họ và Tên</th>
+                            <th style="text-align: right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gv in lecturers %}
+                        <tr>
+                            <td>{{ gv[1] }}</td>
+                            <td>{{ gv[2] }}</td>
+                            <td style="text-align: right;">
+                                <div style="display: flex; justify-content: flex-end; gap: 5px;">
+                                    <button class="btn-action-subtle" onclick="openAssignModal('{{ gv[0] }}', '{{ gv[2] }}')" title="Gán lớp dạy">📚 Gán lớp</button>
+                                    <button class="btn-action-danger" onclick="deleteLecturer('{{ gv[0] }}')" title="Xóa tài khoản">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not lecturers %}
+                        <tr><td colspan="3" style="text-align: center; color: #888; padding: 20px;">Chưa có giảng viên nào.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination GV -->
+            {% if pag_gv.total_pages > 1 %}
+            <div class="pagination">
+                <a href="{{ url_for('admin.dashboard', page_gv=pag_gv.current - 1, page_cls=pag_cls.current) }}" 
+                   class="pagination-btn {{ 'disabled' if not pag_gv.has_prev }}">‹</a>
+                <span class="pagination-info">{{ pag_gv.current }}/{{ pag_gv.total_pages }}</span>
+                <a href="{{ url_for('admin.dashboard', page_gv=pag_gv.current + 1, page_cls=pag_cls.current) }}" 
+                   class="pagination-btn {{ 'disabled' if not pag_gv.has_next }}">›</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Quản lý Lớp học -->
+        <div class="card" style="display: flex; flex-direction: column;">
+            <div style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <h3 style="font-size: 1.1rem; color: var(--success);">Danh mục Lớp học</h3>
+            </div>
+            <div class="table-wrapper" style="flex: 1;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên Lớp</th>
+                            <th style="text-align: right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cls in classes %}
+                        <tr>
+                            <td>{{ cls[0] }}</td>
+                            <td>{{ cls[1] }}</td>
+                            <td style="text-align: right;">
+                                <button class="btn-action-danger" onclick="deleteClass('{{ cls[0] }}')" title="Xóa lớp">🗑️ Xóa</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not classes %}
+                        <tr><td colspan="3" style="text-align: center; color: #888; padding: 20px;">Chưa có lớp học nào.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Lớp -->
+            {% if pag_cls.total_pages > 1 %}
+            <div class="pagination">
+                <a href="{{ url_for('admin.dashboard', page_gv=pag_gv.current, page_cls=pag_cls.current - 1) }}" 
+                   class="pagination-btn {{ 'disabled' if not pag_cls.has_prev }}">‹</a>
+                <span class="pagination-info">{{ pag_cls.current }}/{{ pag_cls.total_pages }}</span>
+                <a href="{{ url_for('admin.dashboard', page_gv=pag_gv.current, page_cls=pag_cls.current + 1) }}" 
+                   class="pagination-btn {{ 'disabled' if not pag_cls.has_next }}">›</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .admin-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        padding: 15px 24px;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+    }
+    .admin-actions {
+        display: flex;
+        gap: 12px;
+    }
+    .btn-action-subtle {
+        background: rgba(67, 97, 238, 0.1);
+        color: var(--primary);
+        border: 1px solid rgba(67, 97, 238, 0.2);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+    .btn-action-subtle:hover {
+        background: var(--primary);
+        color: white;
+    }
+    .btn-action-danger {
+        background: rgba(231, 76, 60, 0.1);
+        color: var(--danger);
+        border: 1px solid rgba(231, 76, 60, 0.2);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-action-danger:hover {
+        background: var(--danger);
+        color: white;
+    }
+</style>
+
+<!-- Modals remain mostly same but integrated here -->
+<!-- Modal Thêm Giảng viên -->
+<div id="lecturerModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('lecturerModal')">&times;</span>
+        <h3 style="margin-bottom: 20px;">Thêm Giảng viên mới</h3>
+        <div class="form-group">
+            <label>Tên đăng nhập</label>
+            <input type="text" id="gv-username">
+        </div>
+        <div class="form-group">
+            <label>Mật khẩu</label>
+            <input type="password" id="gv-password">
+        </div>
+        <div class="form-group">
+            <label>Họ và Tên</label>
+            <input type="text" id="gv-name">
+        </div>
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-primary" onclick="saveLecturer()">Lưu tài khoản</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Thêm Lớp học -->
+<div id="classModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('classModal')">&times;</span>
+        <h3 style="margin-bottom: 20px;">Thêm Lớp học mới</h3>
+        <div class="form-group">
+            <label>Tên lớp học</label>
+            <input type="text" id="class-name" placeholder="VD: Công nghệ AI - K15">
+        </div>
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-success" onclick="saveClass()">Lưu lớp học</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Gán Lớp cho Giảng viên -->
+<div id="assignModal" class="modal">
+    <div class="modal-content" style="width: 500px;">
+        <span class="close" onclick="closeModal('assignModal')">&times;</span>
+        <h3 id="assign-title" style="margin-bottom: 20px;">Gán lớp cho Giảng viên</h3>
+        
+        <div class="form-group">
+            <label>Chọn lớp học để gán:</label>
+            <div style="display: flex; gap: 10px;">
+                <select id="assign-class-select" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    {% for cls in all_classes %}
+                    <option value="{{ cls[0] }}">{{ cls[1] }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-primary" onclick="addAssignment()">Gán</button>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <label>Danh sách lớp đang quản lý:</label>
+            <div id="assigned-classes-list" style="margin-top: 10px;">
+                <!-- Se duoc dien bang JS -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function saveLecturer() {
+        const username = document.getElementById('gv-username').value;
+        const password = document.getElementById('gv-password').value;
+        const name = document.getElementById('gv-name').value;
+        
+        if(!username || !password || !name) {
+            alert("Vui lòng điền đầy đủ thông tin!");
+            return;
+        }
+
+        fetch('/admin/lecturer', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                username: username, 
+                password: password, 
+                name: name
+            })
+        }).then(res => res.json()).then(data => {
+            if(data.status === 'success') {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        }).catch(err => alert("Lỗi kết nối!"));
+    }
+
+    function deleteLecturer(id) {
+        if(confirm('Bạn có chắc chắn muốn xóa giảng viên này?')) {
+            fetch(`/admin/lecturer/${id}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') location.reload();
+                else alert(data.message);
+            });
+        }
+    }
+
+    function saveClass() {
+        const name = document.getElementById('class-name').value;
+        if(!name) {
+            alert("Vui lòng nhập tên lớp!");
+            return;
+        }
+
+        fetch('/admin/class', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: name})
+        }).then(res => res.json()).then(data => {
+            if(data.status === 'success') {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        }).catch(err => alert("Lỗi kết nối!"));
+    }
+
+    function deleteClass(id) {
+        if(confirm('Bạn có chắc chắn muốn xóa lớp học này?')) {
+            fetch(`/admin/class/${id}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') location.reload();
+                else alert(data.message);
+            });
+        }
+    }
+
+    let currentAssignUserId = null;
+
+    function openAssignModal(userId, name) {
+        currentAssignUserId = userId;
+        document.getElementById('assign-title').innerText = `Quản lý lớp: ${name}`;
+        loadAssignedClasses(userId);
+        openModal('assignModal');
+    }
+
+    function loadAssignedClasses(userId) {
+        fetch(`/admin/lecturer/${userId}/classes`)
+        .then(res => res.json())
+        .then(data => {
+            const listDiv = document.getElementById('assigned-classes-list');
+            listDiv.innerHTML = '';
+            
+            if(data.classes.length === 0) {
+                listDiv.innerHTML = '<p style="color: #888; font-size: 0.9rem;">Chưa gán lớp nào.</p>';
+                return;
+            }
+
+            data.classes.forEach(cls => {
+                const item = document.createElement('div');
+                item.style = 'display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8f9fa; border-radius: 6px; margin-bottom: 5px; font-size: 0.9rem;';
+                item.innerHTML = `
+                    <span>${cls[1]}</span>
+                    <button class="btn btn-danger" style="padding: 2px 8px; font-size: 0.7rem;" onclick="removeAssignment(${cls[0]})">Hủy gán</button>
+                `;
+                listDiv.appendChild(item);
+            });
+        });
+    }
+
+    function addAssignment() {
+        const classId = document.getElementById('assign-class-select').value;
+        if(!classId) return;
+
+        fetch('/admin/lecturer/assign', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user_id: currentAssignUserId, class_id: classId})
+        }).then(res => res.json()).then(data => {
+            if(data.status === 'success') {
+                loadAssignedClasses(currentAssignUserId);
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+
+    function removeAssignment(classId) {
+        if(!confirm('Hủy gán lớp này cho giảng viên?')) return;
+        
+        fetch('/admin/lecturer/unassign', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user_id: currentAssignUserId, class_id: classId})
+        }).then(res => res.json()).then(data => {
+            if(data.status === 'success') {
+                loadAssignedClasses(currentAssignUserId);
+            }
+        });
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        if (event.target.className === 'modal') {
+            event.target.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Học thuật - Smart Attendance{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header-row" style="margin-bottom: 24px;">
+        <h2 style="border-bottom: none; margin-bottom: 0;">Quản lý Học thuật</h2>
+        <div class="admin-actions" style="display: flex; gap: 10px;">
+            <div style="display: flex; align-items: center; background: #eee; padding: 5px 10px; border-radius: 8px; gap: 10px;">
+                <input type="file" id="import-file" accept=".csv" style="font-size: 0.8rem;">
+                <button class="btn btn-success" onclick="importStudents();" style="padding: 5px 15px;">⬆️ Nhập CSV</button>
+            </div>
+            <button class="btn btn-primary" onclick="exportStudents();">📥 Xuất CSV</button>
+        </div>
+    </div>
+
+    <div class="admin-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+        <!-- Khoa -->
+        <div class="card">
+            <h3 style="color: var(--primary); font-size: 1rem; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">Danh sách Khoa</h3>
+            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Tên Khoa</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for d in depts %}
+                        <tr><td>{{ d[0] }}</td><td>{{ d[1] }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Ngành -->
+        <div class="card">
+            <h3 style="color: var(--success); font-size: 1rem; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">Danh sách Ngành</h3>
+            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Tên Ngành</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for m in majors %}
+                        <tr><td>{{ m[0] }}</td><td>{{ m[1] }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Học phần -->
+        <div class="card">
+            <h3 style="color: var(--warning); font-size: 1rem; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">Danh sách Học phần</h3>
+            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Tên Học phần</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for c in courses %}
+                        <tr><td>{{ c[0] }}</td><td>{{ c[1] }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+        <h3 style="color: var(--danger); font-size: 1.1rem; margin-bottom: 15px;">Thời khóa biểu & Lịch học</h3>
+        <p style="color: #666; font-size: 0.9rem;">Tính năng lập lịch học chi tiết cho từng ca và phòng học đang được cập nhật trong phiên bản tiếp theo.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function exportStudents() {
+        window.location.href = "{{ url_for('admin.export_students') }}";
+    }
+
+    function importStudents() {
+        const fileInput = document.getElementById('import-file');
+        if (fileInput.files.length === 0) {
+            alert("Vui lòng chọn file CSV!");
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        
+        fetch('/admin/import/students', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.status === 'success') location.reload();
+        })
+        .catch(err => alert("Lỗi kết nối!"));
+    }
+</script>
+{% endblock %}

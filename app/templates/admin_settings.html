@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Cấu hình hệ thống - Smart Attendance{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header-row" style="margin-bottom: 24px;">
+        <h2 style="border-bottom: none; margin-bottom: 0;">Cấu hình hệ thống</h2>
+    </div>
+
+    <div class="card" style="max-width: 800px; margin: 0 auto;">
+        <form id="settings-form">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <!-- Nhóm AI -->
+                <div class="settings-group">
+                    <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        <i>🤖</i> Cấu hình AI
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label>Ngưỡng tin cậy (Threshold)</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" name="match_threshold" min="0.1" max="0.95" step="0.05" 
+                                   value="{{ settings.match_threshold }}" 
+                                   oninput="this.nextElementSibling.value = this.value"
+                                   style="flex: 1;">
+                            <output style="font-weight: 600; width: 40px; text-align: center;">{{ settings.match_threshold }}</output>
+                        </div>
+                        <small style="color: #666; font-size: 0.75rem;">
+                            Thấp: Dễ nhận diện nhưng hay nhầm. <br>
+                            Cao: Chính xác nhưng khó nhận diện hơn. (Khuyên dùng: 0.65 - 0.75)
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Nhóm Thời gian -->
+                <div class="settings-group">
+                    <h3 style="font-size: 1rem; color: var(--warning); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        <i>⏰</i> Quy định thời gian
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label>Giới hạn đi muộn (phút)</label>
+                        <input type="number" name="late_limit_minutes" value="{{ settings.late_limit_minutes }}" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Giới hạn vắng mặt (phút)</label>
+                        <input type="number" name="absent_limit_minutes" value="{{ settings.absent_limit_minutes }}" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Nhóm Thông tin -->
+                <div class="settings-group">
+                    <h3 style="font-size: 1rem; color: var(--success); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        <i>🏫</i> Thông tin trường học
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label>Tên trường / Hệ thống</label>
+                        <input type="text" name="school_name" value="{{ settings.school_name }}" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Nhóm Trạng thái -->
+                <div class="settings-group">
+                    <h3 style="font-size: 1rem; color: var(--danger); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        <i>📡</i> Giám sát hệ thống
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label>Trạng thái Camera AI</label>
+                        <div style="padding: 10px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <span id="camera-status-text" style="font-weight: 600; color: var(--success);">Đang hoạt động (Online)</span>
+                            <div style="width: 10px; height: 10px; background: var(--success); border-radius: 50%; box-shadow: 0 0 5px var(--success);"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary" style="padding: 10px 30px;">Lưu cấu hình</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+    .form-control:focus {
+        border-color: var(--primary);
+        outline: none;
+    }
+    input[type=range] {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 6px;
+        background: #ddd;
+        border-radius: 5px;
+        outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        background: var(--primary);
+        border-radius: 50%;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('settings-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        fetch('/admin/settings/update', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'success') {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert("Lỗi: " + data.message);
+            }
+        })
+        .catch(err => alert("Lỗi kết nối!"));
+    });
+</script>
+{% endblock %}

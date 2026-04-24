@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <section class="video-section">
+        <div class="card" style="margin-bottom: 0;">
+            <h3 style="font-size: 1rem; color: var(--primary);">Live AI Camera Feed</h3>
+            <div class="video-wrapper">
+                <img src="" id="dashboard-cam" alt="Camera Stream">
+            </div>
+        </div>
+        
+        <!-- THỜI KHÓA BIỂU -->
+        <div class="card" style="margin-top: 20px;">
+            <h3 style="font-size: 1rem; color: var(--success); margin-bottom: 15px;">Lịch dạy của bạn</h3>
+            <div class="table-wrapper" style="max-height: 250px;">
+                <table style="font-size: 0.85rem;">
+                    <thead>
+                        <tr><th>Thứ</th><th>Giờ</th><th>Lớp</th><th>Phòng</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for s in schedule %}
+                        <tr>
+                            <td>T{{ s[2] + 1 }}</td>
+                            <td>{{ s[3] }} - {{ s[4] }}</td>
+                            <td>{{ s[6] }}</td>
+                            <td>{{ s[5] }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% if not schedule %}
+                        <tr><td colspan="4" style="text-align: center; color: #888;">Chưa có lịch dạy.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="control-section">
+        <div class="card" style="margin-bottom: 20px; height: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="font-size: 1rem; margin: 0;">Danh sách Sinh viên ({{ students|length }})</h3>
+                <div style="display: flex; gap: 10px;">
+                    <input type="file" id="excel-file" accept=".xlsx" style="display: none;" onchange="handleExcelUpload()">
+                    <button class="btn-action-subtle" onclick="document.getElementById('excel-file').click()" style="background: var(--secondary); color: white;">📂 Import Excel</button>
+                </div>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Tìm kiếm theo MSSV hoặc Tên..." onkeyup="filterTable()">
+            </div>
+            <div class="table-wrapper">
+                <table id="studentTable">
+                    <thead>
+                        <tr>
+                            <th>MSSV</th>
+                            <th>Họ Tên</th>
+                            <th>Ảnh AI</th>
+                            <th>Trạng thái</th>
+                            <th>Điểm danh</th>
+                            <th style="text-align: right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentData">
+                        {% for student in students %}
+                        <tr id="row-{{ student[0] }}">
+                            <td>{{ student[0] }}</td>
+                            <td>{{ student[1] }}</td>
+                            <td>
+                                {% if face_status[student[0]] %}
+                                <span style="color: var(--success); font-weight: bold;">✓ Đã có</span>
+                                {% else %}
+                                <span style="color: var(--danger); font-size: 0.8rem;">✗ Chưa có ảnh</span>
+                                {% endif %}
+                            </td>
+                            <td class="status-cell">
+                                <span class="status-badge {{ student[4]|lower }}">{{ student[4] }}</span>
+                                <br><small style="color: #7f8c8d; font-size: 0.7rem;">{{ student[5] }}</small>
+                            </td>
+                            <td>
+                                <div style="display:flex; gap:4px;">
+                                    <button onclick="updateStatus('{{ student[0] }}', 'IN')" class="btn-action-subtle" style="color: var(--success);">IN</button>
+                                    <button onclick="updateStatus('{{ student[0] }}', 'OUT')" class="btn-action-subtle" style="color: var(--danger);">OUT</button>
+                                </div>
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="display:flex; justify-content: flex-end; gap:4px;">
+                                    {% if not face_status[student[0]] %}
+                                    <button onclick="openEnrollModal('{{ student[0] }}', '{{ student[1] }}', '{{ student[3] }}', '{{ student[2] }}')" class="btn-action-subtle" style="background: var(--primary); color: white;" title="Đăng ký khuôn mặt">📸</button>
+                                    {% endif %}
+                                    <button onclick="openEditModal('{{ student[0] }}', '{{ student[1] }}', '{{ student[2] }}', '{{ student[3] }}')" class="btn-action-subtle">✏️</button>
+                                    <button onclick="deleteStudent('{{ student[0] }}')" class="btn-action-subtle" style="color: var(--danger);">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if pagination.total_pages > 1 %}
+            <div class="pagination">
+                <a href="{{ url_for('attendance.index', page=pagination.current - 1) }}" 
+                   class="pagination-btn {{ 'disabled' if not pagination.has_prev }}">‹</a>
+                <span class="pagination-info">{{ pagination.current }} / {{ pagination.total_pages }}</span>
+                <a href="{{ url_for('attendance.index', page=pagination.current + 1) }}" 
+                   class="pagination-btn {{ 'disabled' if not pagination.has_next }}">›</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- PHÊ DUYỆT NGHỈ PHÉP -->
+        <div class="card">
+            <h3 style="font-size: 1rem; color: var(--warning); margin-bottom: 15px;">Đơn xin nghỉ phép</h3>
+            <div class="table-wrapper" style="max-height: 250px;">
+                <table style="font-size: 0.85rem;">
+                    <thead>
+                        <tr><th>Sinh viên</th><th>Ngày</th><th>Lý do</th><th>Trạng thái</th><th>Thao tác</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for lr in leave_requests %}
+                        <tr>
+                            <td>{{ lr[6] }}<br><small>{{ lr[1] }}</small></td>
+                            <td>{{ lr[4] }}</td>
+                            <td title="{{ lr[3] }}">{{ lr[3][:20] }}...</td>
+                            <td>
+                                <span class="status-badge {{ lr[5]|lower }}">{{ lr[5] }}</span>
+                            </td>
+                            <td>
+                                {% if lr[5] == 'PENDING' %}
+                                <div style="display: flex; gap: 4px;">
+                                    <button onclick="updateLeave('{{ lr[0] }}', 'APPROVED')" class="btn-action-subtle" style="color: var(--success);">Duyệt</button>
+                                    <button onclick="updateLeave('{{ lr[0] }}', 'REJECTED')" class="btn-action-subtle" style="color: var(--danger);">Từ chối</button>
+                                </div>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not leave_requests %}
+                        <tr><td colspan="5" style="text-align: center; color: #888;">Chưa có đơn xin nghỉ.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+    .btn-action-subtle {
+        background: rgba(0,0,0,0.05);
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    .btn-action-subtle:hover {
+        background: rgba(0,0,0,0.1);
+    }
+</style>
+
+<!-- The Edit Modal -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditModal()">&times;</span>
+        <h3 style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Chỉnh sửa sinh viên</h3>
+        
+        <input type="hidden" id="edit-id">
+        
+        <div class="form-group">
+            <label for="edit-name">Họ và Tên</label>
+            <input type="text" id="edit-name" autocomplete="off">
+        </div>
+        
+        <div class="form-group">
+            <label for="edit-dob">Ngày sinh</label>
+            <input type="date" id="edit-dob">
+        </div>
+        
+        <div class="form-group">
+            <label for="edit-class">Lớp</label>
+            <input type="text" id="edit-class" autocomplete="off">
+        </div>
+        
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn" style="background:#ddd; color:#333;" onclick="closeEditModal()">Hủy</button>
+            <button class="btn btn-primary" onclick="saveStudent()">Lưu thay đổi</button>
+        </div>
+    </div>
+</div>
+
+<!-- Enrollment Modal -->
+<div id="enrollModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <span class="close" onclick="closeEnrollModal()">&times;</span>
+        <h3 style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Đăng ký khuôn mặt AI</h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+                <div class="video-wrapper" style="border: 2px solid var(--primary); border-radius: 8px; overflow: hidden;">
+                    <img src="" id="enroll-cam" alt="Enroll Camera" style="width: 100%; height: auto;">
+                </div>
+                <div class="progress-wrapper" id="enroll-progress-container" style="margin-top: 10px; display: none;">
+                    <div class="progress-fill" id="enroll-progress-bar"></div>
+                </div>
+                <div id="enroll-status-msg" style="margin-top: 10px; font-size: 0.85rem; font-weight: bold; text-align: center;"></div>
+            </div>
+            
+            <div style="font-size: 0.9rem;">
+                <p><strong>MSSV:</strong> <span id="enroll-mssv-text"></span></p>
+                <p><strong>Họ Tên:</strong> <span id="enroll-name-text"></span></p>
+                <p><strong>Lớp:</strong> <span id="enroll-class-text"></span></p>
+                
+                <div style="background: #e3f2fd; padding: 10px; border-radius: 8px; margin-top: 15px; color: #1565c0;">
+                    <small>📌 Vui lòng nhìn thẳng vào camera. Hệ thống sẽ tự động chụp 30 khung hình để huấn luyện AI.</small>
+                </div>
+                
+                <button id="enroll-start-btn" class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="startEnrollProcess()">Bắt đầu thu thập</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Thêm timestamp để tránh bị trình duyệt block khi mở nhiều tab camera
+    document.getElementById('dashboard-cam').src = "{{ url_for('attendance.video_feed') }}?t=" + new Date().getTime();
+
+    // Excel Import
+    function handleExcelUpload() {
+        const fileInput = document.getElementById('excel-file');
+        if (fileInput.files.length === 0) return;
+        
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        
+        fetch('/api/enroll/import', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert("Lỗi: " + data.message);
+            }
+        });
+    }
+
+    // Enrollment Logic
+    const enrollModal = document.getElementById("enrollModal");
+    let currentEnrollData = {};
+    let enrollPollInterval;
+
+    function openEnrollModal(id, name, s_class, dob) {
+        currentEnrollData = { id, name, s_class, dob };
+        document.getElementById('enroll-mssv-text').innerText = id;
+        document.getElementById('enroll-name-text').innerText = name;
+        document.getElementById('enroll-class-text').innerText = s_class;
+        
+        // Show camera in modal
+        document.getElementById('enroll-cam').src = "{{ url_for('attendance.video_feed') }}?t=" + new Date().getTime();
+        
+        enrollModal.style.display = "flex";
+    }
+
+    function closeEnrollModal() {
+        enrollModal.style.display = "none";
+        document.getElementById('enroll-cam').src = "";
+        if (enrollPollInterval) clearInterval(enrollPollInterval);
+    }
+
+    function startEnrollProcess() {
+        const btn = document.getElementById('enroll-start-btn');
+        const statusMsg = document.getElementById('enroll-status-msg');
+        const progressContainer = document.getElementById('enroll-progress-container');
+        const progressBar = document.getElementById('enroll-progress-bar');
+
+        btn.disabled = true;
+        btn.innerText = "Đang khởi tạo...";
+        statusMsg.innerText = "Đang kết nối AI...";
+        progressContainer.style.display = "block";
+        progressBar.style.width = "0%";
+
+        fetch('/api/enroll/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                mssv: currentEnrollData.id, 
+                name: currentEnrollData.name, 
+                dob: currentEnrollData.dob, 
+                student_class: currentEnrollData.s_class 
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'success') {
+                btn.innerText = "Đang thu thập...";
+                enrollPollInterval = setInterval(checkEnrollStatus, 300);
+            } else {
+                alert(data.message);
+                btn.disabled = false;
+                btn.innerText = "Thử lại";
+            }
+        });
+    }
+
+    function checkEnrollStatus() {
+        fetch('/api/enroll/status')
+        .then(res => res.json())
+        .then(data => {
+            const statusMsg = document.getElementById('enroll-status-msg');
+            const progressBar = document.getElementById('enroll-progress-bar');
+            
+            if (data.status === 'processing') {
+                statusMsg.innerText = data.message;
+                const percent = (data.progress / 30) * 100;
+                progressBar.style.width = percent + "%";
+            } else if (data.status === 'success') {
+                clearInterval(enrollPollInterval);
+                progressBar.style.width = "100%";
+                statusMsg.innerText = "Đăng ký thành công!";
+                statusMsg.style.color = "var(--success)";
+                setTimeout(() => location.reload(), 1500);
+            } else if (data.status === 'error') {
+                clearInterval(enrollPollInterval);
+                alert(data.message);
+                location.reload();
+            }
+        });
+    }
+
+    function updateLeave(requestId, status) {
+        if (!confirm(`Bạn có chắc chắn muốn ${status === 'APPROVED' ? 'Duyệt' : 'Từ chối'} đơn này?`)) return;
+        
+        fetch('/leave/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({request_id: requestId, status: status})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'success') location.reload();
+            else alert("Lỗi hệ thống!");
+        });
+    }
+
+    function updateStatus(studentId, action) {
+        fetch('/attendance/action', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id: studentId, action: action})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                location.reload(); 
+            } else {
+                alert("Lỗi: " + data.message);
+            }
+        });
+    }
+
+    function deleteStudent(studentId) {
+        if (confirm(`Bạn có chắc chắn muốn xóa sinh viên ${studentId} (bao gồm cả dữ liệu nhận diện khuôn mặt)?`)) {
+            fetch(`/api/student/${studentId}`, {
+                method: 'DELETE'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('row-' + studentId).remove();
+                } else {
+                    alert("Lỗi khi xóa: " + data.message);
+                }
+            })
+            .catch(err => alert("Lỗi kết nối!"));
+        }
+    }
+
+    // Modal Logic
+    const modal = document.getElementById("editModal");
+    
+    function openEditModal(id, name, dob, s_class) {
+        document.getElementById('edit-id').value = id;
+        document.getElementById('edit-name').value = name;
+        document.getElementById('edit-dob').value = dob !== 'None' ? dob : '';
+        document.getElementById('edit-class').value = s_class !== 'None' ? s_class : '';
+        modal.style.display = "flex";
+    }
+
+    function closeEditModal() {
+        modal.style.display = "none";
+    }
+
+    function saveStudent() {
+        const id = document.getElementById('edit-id').value;
+        const name = document.getElementById('edit-name').value;
+        const dob = document.getElementById('edit-dob').value;
+        const s_class = document.getElementById('edit-class').value;
+        
+        fetch(`/api/student/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name: name, dob: dob, student_class: s_class })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert("Lỗi khi cập nhật: " + data.message);
+            }
+        })
+        .catch(err => alert("Lỗi kết nối!"));
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            closeEditModal();
+        }
+    }
+
+    function filterTable() {
+        let input = document.getElementById("searchInput");
+        let filter = input.value.toUpperCase();
+        let table = document.getElementById("studentTable");
+        let tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+            let tdId = tr[i].getElementsByTagName("td")[0];
+            let tdName = tr[i].getElementsByTagName("td")[1];
+            if (tdId || tdName) {
+                let txtId = tdId.textContent || tdId.innerText;
+                let txtName = tdName.textContent || tdName.innerText;
+                if (txtId.toUpperCase().indexOf(filter) > -1 || txtName.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

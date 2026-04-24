@@ -1,0 +1,228 @@
+/* === KIOSK SPECIFIC STYLES === */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #0f0f1b; /* Darker, more premium background */
+    color: #fff;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background: linear-gradient(90deg, #1e3c72, #2a5298);
+    padding: 1.5vh 2vw;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    z-index: 10;
+    border-bottom: 2px solid #3498db;
+    position: relative; /* Thêm để định vị nút admin */
+}
+
+.header h1 {
+    font-size: clamp(1.2rem, 3.5vw, 2.2rem);
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #f1f1f1;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.btn-exit {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    text-decoration: none;
+    font-size: 1.5rem;
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s;
+    border: 1px solid rgba(231, 76, 60, 0.4);
+    cursor: pointer;
+    outline: none;
+}
+
+.btn-exit:hover {
+    background: rgba(231, 76, 60, 0.4);
+    transform: translateY(-50%) scale(1.1);
+    color: #fff;
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    position: relative;
+    width: 100%;
+}
+
+.camera-container {
+    flex: 1;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.camera-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-right: 2px solid #1e3c72;
+}
+
+/* Khung hướng dẫn mặt Responsive - Dáng đứng (Portrait) */
+.face-guide {
+    position: absolute;
+    top: 48%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: clamp(180px, 22vw, 300px); /* Thu hẹp chiều ngang */
+    height: clamp(250px, 50vh, 420px); /* Giữ chiều dọc */
+    border: 4px dashed rgba(46, 204, 113, 0.8);
+    border-radius: 50% / 45%; /* Ép thành hình oval đứng */
+    pointer-events: none;
+    box-shadow: 0 0 0 1000px rgba(0,0,0,0.4); /* Làm tối vùng ngoài khung */
+}
+
+.action-panel {
+    width: clamp(280px, 35vw, 450px);
+    background: #161625;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 4vh 4vw;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.6);
+    z-index: 5;
+}
+
+.btn-check {
+    width: 100%;
+    height: clamp(100px, 20vh, 180px);
+    border-radius: 20px;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    border: none;
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+    box-shadow: 0 10px 30px rgba(46, 204, 113, 0.4);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-check:active {
+    transform: scale(0.92);
+    box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
+}
+
+.btn-check:disabled {
+    background: #444;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.7;
+}
+
+.instruction {
+    margin-top: 5vh;
+    font-size: clamp(1rem, 1.8vw, 1.4rem);
+    text-align: left;
+    color: #a0aec0;
+    line-height: 1.8;
+}
+
+.instruction p {
+    margin-bottom: 1vh;
+}
+
+/* Popup Notification Responsive */
+.popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: rgba(26, 26, 46, 0.98);
+    padding: 5vh 5vw;
+    border-radius: 30px;
+    text-align: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 100;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.9);
+    width: clamp(350px, 60vw, 600px);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.popup.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.popup-icon {
+    font-size: clamp(4rem, 8vw, 6rem);
+    margin-bottom: 3vh;
+}
+
+.popup-title {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    font-weight: 800;
+    margin-bottom: 2vh;
+}
+
+.popup-message {
+    font-size: clamp(1.2rem, 2vw, 1.6rem);
+    color: #cbd5e0;
+}
+
+.success-theme { border-top: 10px solid #2ecc71; }
+.success-theme .popup-icon { color: #2ecc71; }
+.success-theme .popup-title { color: #2ecc71; }
+
+.error-theme { border-top: 10px solid #e74c3c; }
+.error-theme .popup-icon { color: #e74c3c; }
+.error-theme .popup-title { color: #e74c3c; }
+
+/* Responsive break cho màn hình dạng dọc (Mobile) */
+@media (max-aspect-ratio: 1/1) {
+    .main-content {
+        flex-direction: column;
+    }
+    .camera-container img {
+        border-right: none;
+        border-bottom: 2px solid #1e3c72;
+    }
+    .action-panel {
+        width: 100%;
+        height: 38vh;
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 2vh 4vw;
+        box-shadow: 0 -10px 30px rgba(0,0,0,0.6);
+    }
+    .btn-check {
+        width: 48%;
+        height: 90%;
+    }
+    .instruction {
+        width: 42%;
+        margin-top: 0;
+        font-size: clamp(0.8rem, 2vw, 1.1rem);
+    }
+}

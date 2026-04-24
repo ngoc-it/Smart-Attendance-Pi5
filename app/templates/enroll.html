@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Đăng ký Sinh viên - Smart Attendance{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/enroll.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="enroll-container">
+    <div class="enroll-card">
+        
+        <div class="enroll-sidebar">
+            <h3 style="font-size: 1rem; margin-bottom: 10px;">Quét Khuôn Mặt</h3>
+            <div class="live-preview-box">
+                <img src="" id="enroll-cam" alt="Camera Stream">
+            </div>
+            
+            <div id="status-msg" class="status-msg" style="margin-top: 15px; font-size: 0.9rem;"></div>
+            <div class="progress-wrapper" id="progress-container" style="margin-top: 10px;">
+                <div class="progress-fill" id="progress-bar"></div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="enroll-tabs" style="display: flex; gap: 20px; border-bottom: 1px solid #eee; margin-bottom: 20px;">
+                <button class="tab-btn active" onclick="switchTab('individual')">Đăng ký thủ công</button>
+                <button class="tab-btn" onclick="switchTab('bulk')">Nhập từ Excel (XLSX)</button>
+            </div>
+
+            <!-- TAB 1: INDIVIDUAL -->
+            <div id="tab-individual" class="tab-content active">
+                <div class="input-grid">
+                    <div class="input-box">
+                        <label>Mã số sinh viên *</label>
+                        <input type="text" id="mssv" placeholder="VD: 2100123" autocomplete="off">
+                    </div>
+                    <div class="input-box">
+                        <label>Họ và Tên *</label>
+                        <input type="text" id="fullname" placeholder="Nhập đầy đủ họ tên" autocomplete="off">
+                    </div>
+                    <div class="input-box">
+                        <label>Ngày sinh</label>
+                        <input type="date" id="dob">
+                    </div>
+                    <div class="input-box">
+                        <label>Lớp *</label>
+                        <select id="student_class" style="padding: 10px; border-radius: 8px; border: 1px solid #dcdcdc; width: 100%;">
+                            <option value="">-- Chọn lớp học --</option>
+                            {% for cls in classes %}
+                            <option value="{{ cls[1] }}">{{ cls[1] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button id="enroll-btn" class="btn-submit" style="margin-top: 20px;" onclick="startEnroll()">Bắt đầu thu thập khuôn mặt</button>
+            </div>
+
+            <!-- TAB 2: BULK IMPORT -->
+            <div id="tab-bulk" class="tab-content" style="display: none;">
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; border: 2px dashed #ccc; text-align: center;">
+                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Chọn file Excel mẫu của trường để nhập nhanh danh sách lớp.</p>
+                    <input type="file" id="excel-file" accept=".xlsx" style="display: none;" onchange="handleExcelUpload()">
+                    <button class="btn-submit" style="width: auto; padding: 10px 30px; background: var(--secondary);" onclick="document.getElementById('excel-file').click()">📂 Chọn file XLSX</button>
+                    <div id="upload-status" style="margin-top: 10px; font-weight: bold;"></div>
+                </div>
+            </div>
+
+            <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
+
+            <!-- STUDENT LIST FOR REGISTRATION -->
+            <h4 style="margin-bottom: 15px; font-size: 1rem;">Danh sách sinh viên & Trạng thái khuôn mặt</h4>
+            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                <table id="enrollListTable" style="font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th>MSSV</th>
+                            <th>Họ Tên</th>
+                            <th>Lớp</th>
+                            <th>Khuôn mặt</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in students %}
+                        <tr>
+                            <td>{{ s[0] }}</td>
+                            <td>{{ s[1] }}</td>
+                            <td>{{ s[3] }}</td>
+                            <td>
+                                {% if face_status[s[0]] %}
+                                <span style="color: var(--success); font-weight: bold;">✓ Đã có</span>
+                                {% else %}
+                                <span style="color: var(--danger);">✗ Chưa có</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn-action-subtle" onclick="fillForm('{{ s[0] }}', '{{ s[1] }}', '{{ s[2] }}', '{{ s[3] }}')" style="padding: 2px 8px;">Nạp nhanh</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<style>
+    .tab-btn {
+        background: none;
+        border: none;
+        padding: 10px 0;
+        cursor: pointer;
+        font-weight: 600;
+        color: #888;
+        border-bottom: 2px solid transparent;
+        transition: 0.3s;
+    }
+    .tab-btn.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+    .btn-action-subtle {
+        background: rgba(0,0,0,0.05);
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let pollInterval;
+
+    // Thêm timestamp để tránh bị trình duyệt block khi mở nhiều tab camera
+    document.getElementById('enroll-cam').src = "{{ url_for('attendance.video_feed') }}?t=" + new Date().getTime();
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        
+        event.target.classList.add('active');
+        document.getElementById('tab-' + tab).style.display = 'block';
+    }
+
+    function fillForm(mssv, name, dob, s_class) {
+        document.getElementById('mssv').value = mssv;
+        document.getElementById('fullname').value = name;
+        document.getElementById('dob').value = dob !== 'None' ? dob : '';
+        document.getElementById('student_class').value = s_class !== 'None' ? s_class : '';
+        
+        // Switch to individual tab
+        document.querySelectorAll('.tab-btn')[0].click();
+        
+        // Highlight form
+        const form = document.querySelector('.input-grid');
+        form.style.background = '#fff9c4';
+        setTimeout(() => form.style.background = 'none', 1000);
+    }
+
+    function handleExcelUpload() {
+        const fileInput = document.getElementById('excel-file');
+        const status = document.getElementById('upload-status');
+        
+        if (fileInput.files.length === 0) return;
+        
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        
+        status.innerText = "Đang xử lý file Excel...";
+        status.style.color = "var(--primary)";
+        
+        fetch('/api/enroll/import', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                status.innerText = data.message;
+                status.style.color = "var(--success)";
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                status.innerText = "Lỗi: " + data.message;
+                status.style.color = "var(--danger)";
+            }
+        })
+        .catch(err => {
+            status.innerText = "Lỗi kết nối Server!";
+            status.style.color = "var(--danger)";
+        });
+    }
+
+    function startEnroll() {
+        const mssv = document.getElementById('mssv').value.trim();
+        const name = document.getElementById('fullname').value.trim();
+        const dob = document.getElementById('dob').value;
+        const student_class = document.getElementById('student_class').value;
+        
+        const statusMsg = document.getElementById('status-msg');
+        const enrollBtn = document.getElementById('enroll-btn');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+
+        if(!mssv || !name || !student_class) {
+            statusMsg.innerText = "Vui lòng nhập đủ MSSV, Họ tên và chọn Lớp!";
+            statusMsg.className = "status-msg msg-error";
+            return;
+        }
+
+        // Lock UI
+        enrollBtn.disabled = true;
+        enrollBtn.innerText = "Đang khởi tạo AI Engine...";
+        statusMsg.innerText = "Đang kết nối...";
+        statusMsg.className = "status-msg msg-processing";
+        
+        progressContainer.style.display = "block";
+        progressBar.style.width = "0%";
+        
+        fetch('/api/enroll/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mssv, name, dob, student_class })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'success') {
+                enrollBtn.innerText = "Đang thu thập khung hình...";
+                pollInterval = setInterval(checkStatus, 300);
+            } else {
+                showError(data.message);
+            }
+        })
+        .catch(err => {
+            showError("Lỗi kết nối Server!");
+        });
+        
+        function checkStatus() {
+            fetch('/api/enroll/status')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'processing') {
+                    statusMsg.innerText = data.message;
+                    statusMsg.className = "status-msg msg-processing";
+                    const percent = (data.progress / 30) * 100;
+                    progressBar.style.width = percent + "%";
+                } else if (data.status === 'success') {
+                    clearInterval(pollInterval);
+                    progressBar.style.width = "100%";
+                    statusMsg.innerText = data.message;
+                    statusMsg.className = "status-msg msg-success";
+                    
+                    // Xóa form
+                    document.getElementById('mssv').value = '';
+                    document.getElementById('fullname').value = '';
+                    document.getElementById('dob').value = '';
+                    document.getElementById('student_class').value = '';
+                    
+                    unlockUI("Đăng ký thành công!");
+                    setTimeout(() => location.reload(), 2000); // Reload để cập nhật bảng
+                } else if (data.status === 'error') {
+                    clearInterval(pollInterval);
+                    showError(data.message);
+                }
+            })
+            .catch(err => {
+                clearInterval(pollInterval);
+                showError("Mất kết nối với AI Server!");
+            });
+        }
+        
+        function showError(msg) {
+            statusMsg.innerText = msg;
+            statusMsg.className = "status-msg msg-error";
+            progressBar.style.width = "0%";
+            setTimeout(() => { progressContainer.style.display = "none"; }, 500);
+            unlockUI("Thử lại");
+        }
+        
+        function unlockUI(btnText) {
+            setTimeout(() => {
+                enrollBtn.disabled = false;
+                enrollBtn.innerText = btnText || "Bắt đầu thu thập khuôn mặt";
+            }, 1500);
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kiosk Điểm Danh</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/kiosk.css') }}">
+</head>
+<body>
+
+    <div class="header">
+        <h1>HỆ THỐNG ĐIỂM DANH TỰ ĐỘNG</h1>
+        <button onclick="exitApp()" class="btn-exit" title="Thoát ứng dụng">✖</button>
+    </div>
+
+    <div class="main-content">
+        <div class="camera-container">
+            <img src="" id="kiosk-cam" alt="Camera">
+            <div class="face-guide"></div>
+        </div>
+
+        <div class="action-panel">
+            <button class="btn-check" id="btn-check" onclick="performCheckIn()">
+                ĐIỂM DANH
+            </button>
+            <div class="instruction">
+                <p>1. Đứng vào trong khung hình.</p>
+                <p>2. Chắc chắn chỉ có 1 người.</p>
+                <p>3. Bấm nút ĐIỂM DANH.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup -->
+    <div id="popup" class="popup">
+        <div id="popup-icon" class="popup-icon"></div>
+        <div id="popup-title" class="popup-title"></div>
+        <div id="popup-message" class="popup-message"></div>
+    </div>
+
+    <script>
+        // Thêm timestamp để tránh bị trình duyệt block khi mở nhiều tab camera
+        document.getElementById('kiosk-cam').src = "{{ url_for('attendance.video_feed') }}?t=" + new Date().getTime();
+
+        const btnCheck = document.getElementById('btn-check');
+        const popup = document.getElementById('popup');
+        const popupIcon = document.getElementById('popup-icon');
+        const popupTitle = document.getElementById('popup-title');
+        const popupMessage = document.getElementById('popup-message');
+
+        let popupTimeout;
+
+        function showPopup(type, title, message) {
+            clearTimeout(popupTimeout);
+            
+            popup.className = `popup show ${type}-theme`;
+            popupIcon.innerHTML = type === 'success' ? '✅' : '❌';
+            popupTitle.innerText = title;
+            popupMessage.innerText = message;
+
+            popupTimeout = setTimeout(() => {
+                popup.classList.remove('show');
+            }, 4000);
+        }
+
+        function exitApp() {
+            if (confirm("Bạn có chắc chắn muốn thoát ứng dụng?")) {
+                fetch('/api/kiosk/exit', { method: 'POST' })
+                .catch(err => console.error("Exit failed", err));
+            }
+        }
+
+        function performCheckIn() {
+            btnCheck.disabled = true;
+            btnCheck.innerText = "...";
+
+            fetch('/api/kiosk/check', {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showPopup('success', `Check-${data.action} Thành Công`, data.message);
+                } else {
+                    showPopup('error', 'Lỗi Điểm Danh', data.message);
+                }
+            })
+            .catch(err => {
+                showPopup('error', 'Lỗi Hệ Thống', 'Không thể kết nối đến máy chủ AI.');
+            })
+            .finally(() => {
+                setTimeout(() => {
+                    btnCheck.disabled = false;
+                    btnCheck.innerText = "ĐIỂM DANH";
+                }, 2000); // Khoảng nghỉ 2s để tránh spam
+            });
+        }
+    </script>
+</body>
+</html>
