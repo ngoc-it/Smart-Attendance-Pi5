@@ -13,12 +13,22 @@ attendance_bp = Blueprint('attendance', __name__)
 @lecturer_required
 def index():
     page = request.args.get('page', 1, type=int)
-    per_page = 100
-    user_id = session.get('user_id')
+    per_page = 10
+    class_id = request.args.get('class_id', type=int)
     
+    # Lấy danh sách lớp của GV hoặc tất cả nếu là admin
+    user_role = session.get('role')
+    user_id = session.get('user_id')
+    if user_role == 'admin':
+        classes = db.get_all_classes(per_page=100)
+    else:
+        classes = db.get_user_classes(user_id)
+        if not class_id and classes:
+            class_id = classes[0][0]
+            
     # Dữ liệu chính
-    students = db.get_all_students(user_id=user_id, page=page, per_page=per_page)
-    total_students = db.get_student_count(user_id=user_id)
+    students = db.get_all_students(user_id=user_id, class_id=class_id, page=page, per_page=per_page)
+    total_students = db.get_student_count(user_id=user_id, class_id=class_id)
     
     # Thời khóa biểu & Nghỉ phép
     schedule = db.get_user_schedule(user_id)
@@ -40,7 +50,9 @@ def index():
                            pagination=pagination,
                            schedule=schedule,
                            leave_requests=leave_requests,
-                           face_status=face_status)
+                           face_status=face_status,
+                           classes=classes,
+                           selected_class_id=class_id)
 
 @attendance_bp.route('/leave/update', methods=['POST'])
 @lecturer_required
@@ -54,29 +66,46 @@ def update_leave():
 def reports():
     from flask import request, session
     date_str = request.args.get('date', datetime.now().strftime("%Y-%m-%d"))
-    class_name = request.args.get('class', None)
+    class_id = request.args.get('class_id', type=int)
+    class_name_legacy = request.args.get('class', None)
     
     # Lọc danh sách lớp dựa trên GV
     user_role = session.get('role')
     user_id = session.get('user_id')
     
     if user_role == 'admin':
-        classes = db.get_all_classes()
+        classes = db.get_all_classes(per_page=1000)
     else:
         # Giảng viên chỉ thấy lớp mình được gán
         classes = db.get_user_classes(user_id)
     
     detailed_report = []
     stats = None
+    current_class_name = ""
     
-    if class_name:
+    # Ưu tiên class_id, nếu không có thử dùng class_name (tương thích cũ)
+    target_class = class_id or class_name_legacy
+    
+    if target_class:
         # Kiểm tra quyền truy cập lớp này nếu là GV
         if user_role == 'lecturer':
-            allowed_classes = [c[1] for c in classes]
-            if class_name not in allowed_classes:
-                return "Bạn không có quyền xem lớp này", 403
+            if class_id:
+                allowed_ids = [c[0] for c in classes]
+                if class_id not in allowed_ids:
+                    return "Bạn không có quyền xem lớp này", 403
+            elif class_name_legacy:
+                allowed_names = [c[1] for c in classes]
+                if class_name_legacy not in allowed_names:
+                    return "Bạn không có quyền xem lớp này", 403
 
-        detailed_report = db.get_detailed_attendance(date_str, class_name)
+        detailed_report = db.get_detailed_attendance(date_str, target_class)
+        
+        # Tìm tên lớp để hiển thị
+        for cls in classes:
+            if (class_id and cls[0] == class_id) or (class_name_legacy and cls[1] == class_name_legacy):
+                current_class_name = f"[{cls[2]}] {cls[1]}" if cls[2] else cls[1]
+                if not class_id: class_id = cls[0] # Cập nhật class_id để UI đồng bộ
+                break
         
         # Thống kê nhanh cho lớp được chọn
         total = len(detailed_report)
@@ -92,7 +121,8 @@ def reports():
                            report=detailed_report, 
                            classes=classes,
                            selected_date=date_str,
-                           selected_class=class_name)
+                           selected_class_id=class_id,
+                           current_class_name=current_class_name)
 
 @attendance_bp.route('/reports/export')
 @login_required
@@ -102,12 +132,15 @@ def export_excel():
     import io
     
     date_str = request.args.get('date', datetime.now().strftime("%Y-%m-%d"))
-    class_name = request.args.get('class', None)
+    class_id = request.args.get('class_id', type=int)
+    class_name_legacy = request.args.get('class', None)
     
-    if not class_name:
+    target_class = class_id or class_name_legacy
+    
+    if not target_class:
         return "Vui lòng chọn lớp để xuất báo cáo", 400
         
-    data = db.get_detailed_attendance(date_str, class_name)
+    data = db.get_detailed_attendance(date_str, target_class)
     
     # Chuyển đổi dữ liệu sang DataFrame
     df = pd.DataFrame(data)
@@ -132,7 +165,7 @@ def export_excel():
         
     output.seek(0)
     
-    filename = f"DiemDanh_{class_name}_{date_str}.xlsx"
+    filename = f"DiemDanh_{target_class}_{date_str}.xlsx"
     return send_file(output, 
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      as_attachment=True,
@@ -218,13 +251,8 @@ def manual_action():
         student_id = data.get('id')
         action = data.get('action')
         
-        # Here we just fetch the name to log, though ideally we should fetch from DB
-        students = db.get_all_students()
-        name = "Unknown"
-        for s in students:
-            if s[0] == student_id:
-                name = s[1]
-                break
+        # Lấy tên sinh viên từ DB
+        name = db.get_student_name(student_id)
                 
         db.update_status(student_id, name, action)
         return {"status": "success"}

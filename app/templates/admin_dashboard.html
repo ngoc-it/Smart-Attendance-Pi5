@@ -22,6 +22,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th>Mã GV</th>
                             <th>Tên đăng nhập</th>
                             <th>Họ và Tên</th>
                             <th style="text-align: right;">Thao tác</th>
@@ -30,11 +31,13 @@
                     <tbody>
                         {% for gv in lecturers %}
                         <tr>
+                            <td><code style="background: #eee; padding: 2px 5px; border-radius: 4px;">{{ gv[3] or '-' }}</code></td>
                             <td>{{ gv[1] }}</td>
                             <td>{{ gv[2] }}</td>
                             <td style="text-align: right;">
                                 <div style="display: flex; justify-content: flex-end; gap: 5px;">
                                     <button class="btn-action-subtle" onclick="openAssignModal('{{ gv[0] }}', '{{ gv[2] }}')" title="Gán lớp dạy">📚 Gán lớp</button>
+                                    <button class="btn-action-subtle" style="color: var(--secondary);" onclick="openEditLecturerModal('{{ gv[0] }}', '{{ gv[1] }}', '{{ gv[2] }}', '{{ gv[3] }}')" title="Sửa thông tin">✏️</button>
                                     <button class="btn-action-danger" onclick="deleteLecturer('{{ gv[0] }}')" title="Xóa tài khoản">🗑️</button>
                                 </div>
                             </td>
@@ -76,10 +79,13 @@
                     <tbody>
                         {% for cls in classes %}
                         <tr>
-                            <td>{{ cls[0] }}</td>
+                            <td><code style="background: #e3f2fd; padding: 2px 5px; border-radius: 4px; color: #1565c0;">{{ cls[2] or '-' }}</code></td>
                             <td>{{ cls[1] }}</td>
-                            <td style="text-align: right;">
-                                <button class="btn-action-danger" onclick="deleteClass('{{ cls[0] }}')" title="Xóa lớp">🗑️ Xóa</button>
+                             <td style="text-align: right;">
+                                <div style="display: flex; justify-content: flex-end; gap: 5px;">
+                                    <button class="btn-action-subtle" style="color: var(--secondary);" onclick="openEditClassModal('{{ cls[0] }}', '{{ cls[1] }}', '{{ cls[2] }}')" title="Sửa lớp">✏️ Sửa</button>
+                                    <button class="btn-action-danger" onclick="deleteClass('{{ cls[0] }}')" title="Xóa lớp">🗑️ Xóa</button>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -164,6 +170,10 @@
             <input type="password" id="gv-password">
         </div>
         <div class="form-group">
+            <label>Mã giảng viên (MSGV)</label>
+            <input type="text" id="gv-code" placeholder="VD: GV001">
+        </div>
+        <div class="form-group">
             <label>Họ và Tên</label>
             <input type="text" id="gv-name">
         </div>
@@ -179,11 +189,64 @@
         <span class="close" onclick="closeModal('classModal')">&times;</span>
         <h3 style="margin-bottom: 20px;">Thêm Lớp học mới</h3>
         <div class="form-group">
-            <label>Tên lớp học</label>
-            <input type="text" id="class-name" placeholder="VD: Công nghệ AI - K15">
+            <label>Tên môn học / Học phần</label>
+            <input type="text" id="course-name" placeholder="VD: Vật lý 1">
+        </div>
+        <div class="form-group" style="margin-top: 10px;">
+            <label>Mã lớp học phần (Duy nhất)</label>
+            <input type="text" id="class-code" placeholder="VD: 25211CB006.19">
+            <small style="color: #666; font-size: 0.75rem;">Mã này giúp phân biệt các lớp trùng tên.</small>
         </div>
         <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
             <button class="btn btn-success" onclick="saveClass()">Lưu lớp học</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Chỉnh sửa Giảng viên -->
+<div id="editLecturerModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('editLecturerModal')">&times;</span>
+        <h3 style="margin-bottom: 20px;">Chỉnh sửa Giảng viên</h3>
+        <input type="hidden" id="edit-gv-id">
+        <div class="form-group">
+            <label>Tên đăng nhập</label>
+            <input type="text" id="edit-gv-username">
+        </div>
+        <div class="form-group">
+            <label>Mật khẩu mới (Để trống nếu không đổi)</label>
+            <input type="password" id="edit-gv-password" placeholder="********">
+        </div>
+        <div class="form-group">
+            <label>Mã giảng viên (MSGV)</label>
+            <input type="text" id="edit-gv-code">
+        </div>
+        <div class="form-group">
+            <label>Họ và Tên</label>
+            <input type="text" id="edit-gv-name">
+        </div>
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-primary" onclick="updateLecturer()">Cập nhật</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Chỉnh sửa Lớp học -->
+<div id="editClassModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('editClassModal')">&times;</span>
+        <h3 style="margin-bottom: 20px;">Chỉnh sửa Lớp học</h3>
+        <input type="hidden" id="edit-cls-id">
+        <div class="form-group">
+            <label>Tên môn học / Học phần</label>
+            <input type="text" id="edit-cls-name">
+        </div>
+        <div class="form-group" style="margin-top: 10px;">
+            <label>Mã lớp học phần</label>
+            <input type="text" id="edit-cls-code">
+        </div>
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-success" onclick="updateClass()">Cập nhật lớp</button>
         </div>
     </div>
 </div>
@@ -199,7 +262,7 @@
             <div style="display: flex; gap: 10px;">
                 <select id="assign-class-select" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
                     {% for cls in all_classes %}
-                    <option value="{{ cls[0] }}">{{ cls[1] }}</option>
+                    <option value="{{ cls[0] }}">{% if cls[2] %}[{{ cls[2] }}] {% endif %}{{ cls[1] }}</option>
                     {% endfor %}
                 </select>
                 <button class="btn btn-primary" onclick="addAssignment()">Gán</button>
@@ -225,6 +288,7 @@
         const username = document.getElementById('gv-username').value;
         const password = document.getElementById('gv-password').value;
         const name = document.getElementById('gv-name').value;
+        const code = document.getElementById('gv-code').value;
         
         if(!username || !password || !name) {
             alert("Vui lòng điền đầy đủ thông tin!");
@@ -237,7 +301,8 @@
             body: JSON.stringify({
                 username: username, 
                 password: password, 
-                name: name
+                name: name,
+                code: code
             })
         }).then(res => res.json()).then(data => {
             if(data.status === 'success') {
@@ -246,6 +311,45 @@
                 alert(data.message);
             }
         }).catch(err => alert("Lỗi kết nối!"));
+    }
+
+    function openEditLecturerModal(id, username, name, code) {
+        document.getElementById('edit-gv-id').value = id;
+        document.getElementById('edit-gv-username').value = username;
+        document.getElementById('edit-gv-name').value = name;
+        document.getElementById('edit-gv-code').value = code !== 'None' ? code : '';
+        document.getElementById('edit-gv-password').value = '';
+        openModal('editLecturerModal');
+    }
+
+    function updateLecturer() {
+        const id = document.getElementById('edit-gv-id').value;
+        const username = document.getElementById('edit-gv-username').value;
+        const name = document.getElementById('edit-gv-name').value;
+        const code = document.getElementById('edit-gv-code').value;
+        const password = document.getElementById('edit-gv-password').value;
+
+        if(!username || !name) {
+            alert("Vui lòng điền tên đăng nhập và họ tên!");
+            return;
+        }
+
+        fetch(`/admin/lecturer/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                username: username,
+                name: name,
+                code: code,
+                password: password
+            })
+        }).then(res => res.json()).then(data => {
+            if(data.status === 'success') {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
     }
 
     function deleteLecturer(id) {
@@ -260,16 +364,18 @@
     }
 
     function saveClass() {
-        const name = document.getElementById('class-name').value;
-        if(!name) {
-            alert("Vui lòng nhập tên lớp!");
+        const courseName = document.getElementById('course-name').value.trim();
+        const code = document.getElementById('class-code').value.trim();
+        
+        if(!courseName || !code) {
+            alert("Vui lòng nhập tên môn và mã lớp!");
             return;
         }
 
         fetch('/admin/class', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({name: name})
+            body: JSON.stringify({name: courseName, code: code})
         }).then(res => res.json()).then(data => {
             if(data.status === 'success') {
                 location.reload();
@@ -277,6 +383,36 @@
                 alert(data.message);
             }
         }).catch(err => alert("Lỗi kết nối!"));
+    }
+
+    function openEditClassModal(id, name, code) {
+        document.getElementById('edit-cls-id').value = id;
+        document.getElementById('edit-cls-name').value = name;
+        document.getElementById('edit-cls-code').value = code !== 'None' ? code : '';
+        openModal('editClassModal');
+    }
+
+    function updateClass() {
+        const id = document.getElementById('edit-cls-id').value;
+        const name = document.getElementById('edit-cls-name').value;
+        const code = document.getElementById('edit-cls-code').value;
+
+        if(!name || !code) {
+            alert("Vui lòng nhập tên môn và mã lớp!");
+            return;
+        }
+
+        fetch(`/admin/class/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: name, code: code})
+        }).then(res => res.json()).then(data => {
+            if(data.status === 'success') {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
     }
 
     function deleteClass(id) {
@@ -314,8 +450,9 @@
             data.classes.forEach(cls => {
                 const item = document.createElement('div');
                 item.style = 'display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8f9fa; border-radius: 6px; margin-bottom: 5px; font-size: 0.9rem;';
+                const displayName = cls[2] ? `[${cls[2]}] ${cls[1]}` : cls[1];
                 item.innerHTML = `
-                    <span>${cls[1]}</span>
+                    <span>${displayName}</span>
                     <button class="btn btn-danger" style="padding: 2px 8px; font-size: 0.7rem;" onclick="removeAssignment(${cls[0]})">Hủy gán</button>
                 `;
                 listDiv.appendChild(item);

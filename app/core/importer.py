@@ -20,14 +20,23 @@ class ExcelImporter:
             wb = openpyxl.load_workbook(file_path, data_only=True)
             sheet = wb.active
             
-            # 1. Đọc metadata (Học phần - dòng 6)
-            course_text = sheet.cell(row=6, column=2).value or "" # Học phần
-            class_section_text = sheet.cell(row=6, column=7).value or "" # Lớp học phần
+            import re
             
-            # Làm sạch chuỗi: "Học phần: 25211CB006.19 - Vật lý 1" -> "Vật lý 1"
-            course_name = course_text.replace("Học phần:", "").strip()
-            # "Lớp học phần: 25211CB006.1903" -> "25211CB006.1903"
-            class_section = class_section_text.replace("Lớp học phần:", "").strip()
+            # 1. Đọc metadata (Học phần - dòng 6)
+            course_text = str(sheet.cell(row=6, column=2).value or "")
+            class_section_text = str(sheet.cell(row=6, column=7).value or "")
+            
+            # Sử dụng Regex để bóc tách thông tin bất kể khoảng trắng hay dấu tiếng Việt
+            # Tìm phần sau dấu ":"
+            course_match = re.search(r':\s*(.*)', course_text)
+            course_name = course_match.group(1).strip() if course_match else course_text
+            
+            # Nếu có định dạng "Mã - Tên" thì lấy Tên (phần cuối)
+            if " - " in course_name:
+                course_name = course_name.split(" - ")[-1].strip()
+                
+            class_match = re.search(r':\s*(.*)', class_section_text)
+            class_section = class_match.group(1).strip() if class_match else class_section_text
             
             students = []
             # Bắt đầu từ dòng 11 (T là cột A, Mã SV là cột B)

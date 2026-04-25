@@ -4,11 +4,21 @@ import os
 import hashlib
 
 class AttendanceDB:
-    def __init__(self, db_path): # Thụt lề 4 space và sửa thành __init__
+    def __init__(self, db_path):
         self.db_path = db_path
         self._init_db()
 
-    def _init_db(self): # Thụt lề 4 space
+    def _get_conn(self):
+        conn = sqlite3.connect(self.db_path)
+        # Hàm lấy tên (chữ cuối cùng) để sắp xếp A-Z theo tên tiếng Việt
+        def get_vietnamese_name(full_name):
+            if not full_name: return ""
+            parts = str(full_name).strip().split()
+            return parts[-1] if parts else ""
+        conn.create_function("GET_TEN", 1, get_vietnamese_name)
+        return conn
+
+    def _init_db(self):
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -33,17 +43,29 @@ class AttendanceDB:
 
             # Bang classes
             cursor.execute('''CREATE TABLE IF NOT EXISTS classes 
-                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, course_id INTEGER)''')
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, code TEXT, course_id INTEGER)''')
             
             cursor.execute("PRAGMA table_info(classes)")
             class_columns = [col[1] for col in cursor.fetchall()]
             if 'course_id' not in class_columns:
                 cursor.execute("ALTER TABLE classes ADD COLUMN course_id INTEGER")
+            if 'code' not in class_columns:
+                cursor.execute("ALTER TABLE classes ADD COLUMN code TEXT")
+            
+            # Xóa UNIQUE constraint cũ trên cột name nếu có (SQLite không hỗ trợ DROP CONSTRAINT trực tiếp)
+            # Tuy nhiên, trong CREATE TABLE ở trên ta đã bỏ UNIQUE rồi. 
+            # Nếu bảng đã tồn tại với UNIQUE(name), ta có thể cần migration phức tạp hơn, 
+            # nhưng ở đây ta chấp nhận để code làm nhiệm vụ phân biệt.
 
             # Bang users
             cursor.execute('''CREATE TABLE IF NOT EXISTS users 
-                (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT, name TEXT)''')
-                
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT, name TEXT, code TEXT)''')
+            
+            cursor.execute("PRAGMA table_info(users)")
+            user_cols = [col[1] for col in cursor.fetchall()]
+            if 'code' not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN code TEXT")
+
             # Bang user_classes (Liên kết GV với lớp học)
             cursor.execute('''CREATE TABLE IF NOT EXISTS user_classes 
                 (user_id INTEGER, class_id INTEGER, PRIMARY KEY (user_id, class_id))''')
@@ -79,6 +101,19 @@ class AttendanceDB:
                  FOREIGN KEY(student_id) REFERENCES students(id),
                  FOREIGN KEY(class_id) REFERENCES classes(id))''')
 
+            # Bang class_students (Liên kết sinh viên với lớp học phần)
+            cursor.execute('''CREATE TABLE IF NOT EXISTS class_students 
+                (class_id INTEGER, student_id TEXT, PRIMARY KEY (class_id, student_id),
+                 FOREIGN KEY(class_id) REFERENCES classes(id),
+                 FOREIGN KEY(student_id) REFERENCES students(id))''')
+
+            # MIGRATION: Lien ket sinh vien cu vao lop hoc phan neu ten trung khop
+            cursor.execute("""
+                INSERT OR IGNORE INTO class_students (class_id, student_id)
+                SELECT c.id, s.id FROM students s
+                JOIN classes c ON s.student_class = c.name
+            """)
+
             # Tu dong tao tai khoan admin neu chua co
             cursor.execute("SELECT * FROM users WHERE username = 'admin'")
             if not cursor.fetchone():
@@ -112,9 +147,9 @@ class AttendanceDB:
     # ---- USERS CRUD ----
     def get_all_lecturers(self, page=1, per_page=10):
         offset = (page - 1) * per_page
-        with sqlite3.connect(self.db_path) as conn:
+        with self._get_conn() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, username, name FROM users WHERE role = 'lecturer' LIMIT ? OFFSET ?", 
+            cursor.execute("SELECT id, username, name, code FROM users WHERE role = 'lecturer' ORDER BY GET_TEN(name) ASC, name ASC LIMIT ? OFFSET ?", 
                            (per_page, offset))
             return cursor.fetchall()
 
@@ -124,13 +159,13 @@ class AttendanceDB:
             cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'lecturer'")
             return cursor.fetchone()[0]
 
-    def create_lecturer(self, username, password, name):
+    def create_lecturer(self, username, password, name, code=None):
         hashed_pw = self.hash_password(password)
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO users (username, password, role, name) VALUES (?, ?, 'lecturer', ?)", 
-                               (username, hashed_pw, name))
+                cursor.execute("INSERT INTO users (username, password, role, name, code) VALUES (?, ?, 'lecturer', ?, ?)", 
+                               (username, hashed_pw, name, code))
                 conn.commit()
                 return True
         except sqlite3.IntegrityError:
@@ -143,12 +178,32 @@ class AttendanceDB:
             cursor.execute("DELETE FROM user_classes WHERE user_id = ?", (user_id,))
             conn.commit()
 
+    def update_lecturer(self, user_id, username, name, code, password=None):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                if password:
+                    hashed_pw = self.hash_password(password)
+                    cursor.execute("""
+                        UPDATE users SET username = ?, name = ?, code = ?, password = ?
+                        WHERE id = ? AND role = 'lecturer'
+                    """, (username, name, code, hashed_pw, user_id))
+                else:
+                    cursor.execute("""
+                        UPDATE users SET username = ?, name = ?, code = ?
+                        WHERE id = ? AND role = 'lecturer'
+                    """, (username, name, code, user_id))
+                conn.commit()
+                return True
+        except sqlite3.IntegrityError:
+            return False
+
     # ---- USER-CLASS ASSIGNMENT ----
     def get_user_classes(self, user_id):
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT c.id, c.name 
+                SELECT c.id, c.name, c.code
                 FROM classes c
                 JOIN user_classes uc ON c.id = uc.class_id
                 WHERE uc.user_id = ?
@@ -194,9 +249,9 @@ class AttendanceDB:
     # ---- CLASSES CRUD ----
     def get_all_classes(self, page=1, per_page=10):
         offset = (page - 1) * per_page
-        with sqlite3.connect(self.db_path) as conn:
+        with self._get_conn() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, name FROM classes ORDER BY name ASC LIMIT ? OFFSET ?", 
+            cursor.execute("SELECT id, name, code FROM classes ORDER BY name ASC LIMIT ? OFFSET ?", 
                            (per_page, offset))
             return cursor.fetchall()
 
@@ -206,11 +261,21 @@ class AttendanceDB:
             cursor.execute("SELECT COUNT(*) FROM classes")
             return cursor.fetchone()[0]
 
-    def create_class(self, name, course_id=None):
+    def create_class(self, name, code=None, course_id=None):
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO classes (name, course_id) VALUES (?, ?)", (name, course_id))
+                cursor.execute("INSERT INTO classes (name, code, course_id) VALUES (?, ?, ?)", (name, code, course_id))
+                conn.commit()
+                return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def update_class(self, class_id, name, code):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE classes SET name = ?, code = ? WHERE id = ?", (name, code, class_id))
                 conn.commit()
                 return True
         except sqlite3.IntegrityError:
@@ -273,7 +338,7 @@ class AttendanceDB:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT s.*, c.name as class_name 
+                SELECT s.*, c.name as class_name, c.code as class_code
                 FROM schedules s 
                 JOIN user_classes uc ON s.class_id = uc.class_id
                 JOIN classes c ON s.class_id = c.id
@@ -325,10 +390,34 @@ class AttendanceDB:
             conn.commit()
 
     def delete_class(self, class_id):
+        if self.has_students(class_id):
+            return False
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM classes WHERE id = ?", (class_id,))
+            cursor.execute("DELETE FROM user_classes WHERE class_id = ?", (class_id,))
+            cursor.execute("DELETE FROM schedules WHERE class_id = ?", (class_id,))
             conn.commit()
+        return True
+
+    def remove_all_students_from_class(self, class_id):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM class_students WHERE class_id = ?", (class_id,))
+            conn.commit()
+
+    def has_students(self, class_id):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1 FROM class_students WHERE class_id = ? LIMIT 1", (class_id,))
+            return cursor.fetchone() is not None
+
+    def get_student_name(self, student_id):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM students WHERE id = ?", (student_id,))
+            row = cursor.fetchone()
+            return row[0] if row else "Unknown"
 
     def check_student_exists(self, student_id):
         with sqlite3.connect(self.db_path) as conn:
@@ -340,12 +429,12 @@ class AttendanceDB:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT c.name 
+                SELECT c.name, c.code
                 FROM classes c
                 JOIN user_classes uc ON c.id = uc.class_id
                 WHERE uc.user_id = ?
             """, (user_id,))
-            return [row[0] for row in cursor.fetchall()]
+            return [f"{row[1]} - {row[0]}" if row[1] else row[0] for row in cursor.fetchall()]
 
     def get_face_registration_status(self, student_ids):
         """Kiểm tra xem sinh viên đã đăng ký khuôn mặt (có file embedding) chưa"""
@@ -356,36 +445,58 @@ class AttendanceDB:
             status[s_id] = os.path.exists(file_path)
         return status
 
-    def enroll_student(self, student_id, name, dob, student_class):
+    def enroll_student(self, student_id, name, dob, student_class, course_class_id=None):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+            # 1. Cap nhat thong tin sinh vien (lop sinh vien co dinh)
             cursor.execute("INSERT OR REPLACE INTO students (id, name, dob, student_class, status, last_seen) VALUES (?, ?, ?, ?, 'REGISTERED', ?)", 
                            (student_id, name, dob, student_class, now))
+            
+            # 2. Neu co lop hoc phan, lien ket vao class_students
+            if course_class_id:
+                cursor.execute("INSERT OR IGNORE INTO class_students (class_id, student_id) VALUES (?, ?)", 
+                               (course_class_id, student_id))
             conn.commit()
 
-    def get_all_students(self, user_id=None, page=1, per_page=10): 
+    def get_all_students(self, user_id=None, class_id=None, page=1, per_page=10): 
         offset = (page - 1) * per_page
-        with sqlite3.connect(self.db_path) as conn:
+        with self._get_conn() as conn:
             cursor = conn.cursor()
-            if user_id:
+            
+            if class_id:
+                # Lay sinh vien cua mot lop hoc phan cu the
                 cursor.execute("""
                     SELECT s.* FROM students s
-                    JOIN user_classes uc ON s.student_class = (SELECT name FROM classes WHERE id = uc.class_id)
+                    JOIN class_students cs ON s.id = cs.student_id
+                    WHERE cs.class_id = ?
+                    ORDER BY GET_TEN(s.name) ASC, s.name ASC
+                    LIMIT ? OFFSET ?
+                """, (class_id, per_page, offset))
+            elif user_id:
+                # Lay tat ca sinh vien thuoc cac lop cua mot giang vien
+                cursor.execute("""
+                    SELECT DISTINCT s.* FROM students s
+                    JOIN class_students cs ON s.id = cs.student_id
+                    JOIN user_classes uc ON cs.class_id = uc.class_id
                     WHERE uc.user_id = ?
+                    ORDER BY GET_TEN(s.name) ASC, s.name ASC
                     LIMIT ? OFFSET ?
                 """, (user_id, per_page, offset))
             else:
-                cursor.execute("SELECT * FROM students LIMIT ? OFFSET ?", (per_page, offset))
+                cursor.execute("SELECT * FROM students ORDER BY GET_TEN(name) ASC, name ASC LIMIT ? OFFSET ?", (per_page, offset))
             return cursor.fetchall()
 
-    def get_student_count(self, user_id=None):
-        with sqlite3.connect(self.db_path) as conn:
+    def get_student_count(self, user_id=None, class_id=None):
+        with self._get_conn() as conn:
             cursor = conn.cursor()
-            if user_id:
+            if class_id:
+                cursor.execute("SELECT COUNT(*) FROM class_students WHERE class_id = ?", (class_id,))
+            elif user_id:
                 cursor.execute("""
-                    SELECT COUNT(*) FROM students s
-                    JOIN user_classes uc ON s.student_class = (SELECT name FROM classes WHERE id = uc.class_id)
+                    SELECT COUNT(DISTINCT s.id) FROM students s
+                    JOIN class_students cs ON s.id = cs.student_id
+                    JOIN user_classes uc ON cs.class_id = uc.class_id
                     WHERE uc.user_id = ?
                 """, (user_id,))
             else:
@@ -494,22 +605,46 @@ class AttendanceDB:
         if not date_str:
             date_str = datetime.now().strftime("%Y-%m-%d")
             
-        with sqlite3.connect(self.db_path) as conn:
+        with self._get_conn() as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
             # 1. Lấy tất cả sinh viên trong lớp này
-            cursor.execute("SELECT id, name FROM students WHERE student_class = ?", (class_name,))
+            # Kiểm tra xem class_name là ID hay Tên
+            if str(class_name).isdigit():
+                cursor.execute("""
+                    SELECT s.id, s.name FROM students s
+                    JOIN class_students cs ON s.id = cs.student_id
+                    WHERE cs.class_id = ?
+                    ORDER BY GET_TEN(s.name) ASC, s.name ASC
+                """, (class_name,))
+            else:
+                cursor.execute("""
+                    SELECT s.id, s.name FROM students s
+                    JOIN class_students cs ON s.id = cs.student_id
+                    JOIN classes c ON cs.class_id = c.id
+                    WHERE c.name = ?
+                    ORDER BY GET_TEN(s.name) ASC, s.name ASC
+                """, (class_name,))
             students = cursor.fetchall()
             
             # 2. Lấy tất cả log trong ngày đó cho lớp này
-            query = """
-                SELECT l.student_id, l.action, l.time, l.image_path
-                FROM logs l
-                JOIN students s ON l.student_id = s.id
-                WHERE date(l.time) = date(?) AND s.student_class = ?
-                ORDER BY l.time ASC
-            """
+            if str(class_name).isdigit():
+                query = """
+                    SELECT l.student_id, l.action, l.time, l.image_path
+                    FROM logs l
+                    JOIN class_students cs ON l.student_id = cs.student_id
+                    WHERE date(l.time) = date(?) AND cs.class_id = ?
+                    ORDER BY l.time ASC
+                """
+            else:
+                query = """
+                    SELECT l.student_id, l.action, l.time, l.image_path
+                    FROM logs l
+                    JOIN students s ON l.student_id = s.id
+                    WHERE date(l.time) = date(?) AND s.student_class = ?
+                    ORDER BY l.time ASC
+                """
             cursor.execute(query, (date_str, class_name))
             logs = cursor.fetchall()
             

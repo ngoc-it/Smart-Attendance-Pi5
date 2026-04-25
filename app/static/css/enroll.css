@@ -1,7 +1,7 @@
 /* === ENROLL PAGE SPECIFIC STYLES === */
 .enroll-container {
-    max-width: 900px;
-    margin: 40px auto;
+    max-width: 1200px;
+    margin: 30px auto;
     padding: 0 20px;
 }
 
@@ -11,7 +11,7 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.08);
     overflow: hidden;
     display: grid;
-    grid-template-columns: 1fr 1.2fr;
+    grid-template-columns: 350px 1fr;
     border: 1px solid #eaeaea;
 }
 

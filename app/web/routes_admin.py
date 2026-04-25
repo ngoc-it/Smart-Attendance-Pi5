@@ -44,7 +44,7 @@ def dashboard():
 @admin_required
 def add_lecturer():
     data = request.json
-    success = db.create_lecturer(data['username'], data['password'], data['name'])
+    success = db.create_lecturer(data['username'], data['password'], data['name'], data.get('code'))
     if success:
         return jsonify({"status": "success", "message": "Thêm giảng viên thành công"})
     return jsonify({"status": "error", "message": "Tên đăng nhập đã tồn tại"}), 400
@@ -55,11 +55,20 @@ def delete_lecturer(user_id):
     db.delete_lecturer(user_id)
     return jsonify({"status": "success"})
 
+@admin_bp.route('/lecturer/<int:user_id>', methods=['PUT'])
+@admin_required
+def update_lecturer(user_id):
+    data = request.json
+    success = db.update_lecturer(user_id, data['username'], data['name'], data.get('code'), data.get('password'))
+    if success:
+        return jsonify({"status": "success", "message": "Cập nhật giảng viên thành công"})
+    return jsonify({"status": "error", "message": "Tên đăng nhập đã tồn tại"}), 400
+
 @admin_bp.route('/class', methods=['POST'])
 @admin_required
 def add_class():
     data = request.json
-    success = db.create_class(data['name'])
+    success = db.create_class(data['name'], data.get('code'))
     if success:
         return jsonify({"status": "success", "message": "Thêm lớp học thành công"})
     return jsonify({"status": "error", "message": "Lớp học đã tồn tại"}), 400
@@ -67,8 +76,23 @@ def add_class():
 @admin_bp.route('/class/<int:class_id>', methods=['DELETE'])
 @admin_required
 def delete_class(class_id):
-    db.delete_class(class_id)
-    return jsonify({"status": "success"})
+    success = db.delete_class(class_id)
+    if success:
+        return jsonify({"status": "success"})
+    else:
+        return jsonify({
+            "status": "error", 
+            "message": "Không thể xóa lớp đang có sinh viên. Vui lòng xóa hết sinh viên trong danh sách lớp trước."
+        }), 400
+
+@admin_bp.route('/class/<int:class_id>', methods=['PUT'])
+@admin_required
+def update_class(class_id):
+    data = request.json
+    success = db.update_class(class_id, data['name'], data.get('code'))
+    if success:
+        return jsonify({"status": "success", "message": "Cập nhật lớp học thành công"})
+    return jsonify({"status": "error", "message": "Lỗi cập nhật lớp học"}), 400
 
 # ---- ASSIGNMENT ROUTES ----
 @admin_bp.route('/lecturer/<int:user_id>/classes', methods=['GET'])

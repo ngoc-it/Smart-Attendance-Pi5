@@ -30,9 +30,9 @@
         <!-- Right Sidebar Navigation -->
         <aside class="right-sidebar" id="sidebar">
             <button class="sidebar-toggle" onclick="toggleSidebar()" title="Thu nhỏ/Mở rộng menu">
-                <span id="toggle-icon">▶</span>
+                <span>☰</span>
             </button>
-            <div class="sidebar-title">Menu Công Cụ</div>
+            <div class="sidebar-title" style="margin-top: 60px;">Menu Công Cụ</div>
             <ul class="sidebar-menu">
                 {% if session.get('role') == 'admin' %}
                 <li>
@@ -82,14 +82,11 @@
     <script>
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
-            const icon = document.getElementById('toggle-icon');
             sidebar.classList.toggle('collapsed');
             
             if (sidebar.classList.contains('collapsed')) {
-                icon.innerText = '◀';
                 localStorage.setItem('sidebar-collapsed', 'true');
             } else {
-                icon.innerText = '▶';
                 localStorage.setItem('sidebar-collapsed', 'false');
             }
         }
@@ -98,7 +95,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('sidebar-collapsed') === 'true') {
                 document.getElementById('sidebar').classList.add('collapsed');
-                document.getElementById('toggle-icon').innerText = '◀';
             }
         });
     </script>

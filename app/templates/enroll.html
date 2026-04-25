@@ -23,9 +23,9 @@
         </div>
 
         <div class="form-section">
-            <div class="enroll-tabs" style="display: flex; gap: 20px; border-bottom: 1px solid #eee; margin-bottom: 20px;">
-                <button class="tab-btn active" onclick="switchTab('individual')">Đăng ký thủ công</button>
-                <button class="tab-btn" onclick="switchTab('bulk')">Nhập từ Excel (XLSX)</button>
+            <div style="margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--primary);">Đăng ký khuôn mặt sinh viên</h3>
+                <p style="font-size: 0.85rem; color: #666;">Nhập thông tin hoặc chọn sinh viên từ danh sách bên dưới để bắt đầu.</p>
             </div>
 
             <!-- TAB 1: INDIVIDUAL -->
@@ -44,32 +44,45 @@
                         <input type="date" id="dob">
                     </div>
                     <div class="input-box">
-                        <label>Lớp *</label>
-                        <select id="student_class" style="padding: 10px; border-radius: 8px; border: 1px solid #dcdcdc; width: 100%;">
-                            <option value="">-- Chọn lớp học --</option>
+                        <label>Lớp học phần *</label>
+                        <select id="course_class_id" style="padding: 10px; border-radius: 8px; border: 1px solid #dcdcdc; width: 100%;">
+                            <option value="">-- Chọn lớp học phần --</option>
                             {% for cls in classes %}
-                            <option value="{{ cls[1] }}">{{ cls[1] }}</option>
+                            <option value="{{ cls[0] }}" {% if selected_class_id == cls[0] %}selected{% endif %}>
+                                {% if cls[2] %}[{{ cls[2] }}] {% endif %}{{ cls[1] }}
+                            </option>
                             {% endfor %}
                         </select>
+                    </div>
+                    <div class="input-box">
+                        <label>Lớp sinh viên (Cố định)</label>
+                        <input type="text" id="student_class" placeholder="VD: XD25D01" autocomplete="off">
                     </div>
                 </div>
                 <button id="enroll-btn" class="btn-submit" style="margin-top: 20px;" onclick="startEnroll()">Bắt đầu thu thập khuôn mặt</button>
             </div>
 
-            <!-- TAB 2: BULK IMPORT -->
-            <div id="tab-bulk" class="tab-content" style="display: none;">
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; border: 2px dashed #ccc; text-align: center;">
-                    <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Chọn file Excel mẫu của trường để nhập nhanh danh sách lớp.</p>
-                    <input type="file" id="excel-file" accept=".xlsx" style="display: none;" onchange="handleExcelUpload()">
-                    <button class="btn-submit" style="width: auto; padding: 10px 30px; background: var(--secondary);" onclick="document.getElementById('excel-file').click()">📂 Chọn file XLSX</button>
-                    <div id="upload-status" style="margin-top: 10px; font-weight: bold;"></div>
-                </div>
-            </div>
 
             <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
 
             <!-- STUDENT LIST FOR REGISTRATION -->
-            <h4 style="margin-bottom: 15px; font-size: 1rem;">Danh sách sinh viên & Trạng thái khuôn mặt</h4>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h4 style="margin: 0; font-size: 1rem;">Danh sách sinh viên & Trạng thái khuôn mặt</h4>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="font-size: 0.8rem; color: #666;">Lọc theo lớp:</label>
+                    <select id="filter_class" onchange="filterByClass()" style="padding: 5px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;">
+                        <option value="">Tất cả sinh viên</option>
+                        {% for cls in classes %}
+                        <option value="{{ cls[0] }}" {% if selected_class_id == cls[0] %}selected{% endif %}>
+                            {% if cls[2] %}[{{ cls[2] }}] {% endif %}{{ cls[1] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if selected_class_id %}
+                    <button class="btn-action-danger" onclick="clearClassStudents()" style="padding: 5px 10px; background: rgba(231, 76, 60, 0.1); color: var(--danger); border: 1px solid var(--danger); border-radius: 6px; font-size: 0.8rem; cursor: pointer;">🗑️ Xóa toàn bộ SV</button>
+                    {% endif %}
+                </div>
+            </div>
             <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
                 <table id="enrollListTable" style="font-size: 0.85rem;">
                     <thead>
@@ -102,6 +115,23 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination -->
+            {% if pagination.total_pages > 1 %}
+            <div class="pagination" style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 20px;">
+                <a href="{{ url_for('enroll.enroll_page', page=pagination.current - 1, class_id=selected_class_id) }}" 
+                   class="pagination-btn {{ 'disabled' if not pagination.has_prev }}"
+                   style="text-decoration: none; padding: 5px 10px; background: #eee; border-radius: 4px; color: #333;">‹ Trước</a>
+                
+                <span class="pagination-info" style="font-size: 0.9rem; font-weight: bold;">
+                    Trang {{ pagination.current }} / {{ pagination.total_pages }}
+                </span>
+                
+                <a href="{{ url_for('enroll.enroll_page', page=pagination.current + 1, class_id=selected_class_id) }}" 
+                   class="pagination-btn {{ 'disabled' if not pagination.has_next }}"
+                   style="text-decoration: none; padding: 5px 10px; background: #eee; border-radius: 4px; color: #333;">Sau ›</a>
+            </div>
+            {% endif %}
         </div>
         
     </div>
@@ -140,22 +170,19 @@
     // Thêm timestamp để tránh bị trình duyệt block khi mở nhiều tab camera
     document.getElementById('enroll-cam').src = "{{ url_for('attendance.video_feed') }}?t=" + new Date().getTime();
 
-    function switchTab(tab) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-        
-        event.target.classList.add('active');
-        document.getElementById('tab-' + tab).style.display = 'block';
-    }
 
     function fillForm(mssv, name, dob, s_class) {
         document.getElementById('mssv').value = mssv;
         document.getElementById('fullname').value = name;
-        document.getElementById('dob').value = dob !== 'None' ? dob : '';
-        document.getElementById('student_class').value = s_class !== 'None' ? s_class : '';
+        document.getElementById('dob').value = (dob && dob !== 'None') ? dob : '';
+        document.getElementById('student_class').value = (s_class && s_class !== 'None') ? s_class : '';
         
-        // Switch to individual tab
-        document.querySelectorAll('.tab-btn')[0].click();
+        // Cập nhật lớp học phần theo bộ lọc hiện tại nếu có
+        const filterVal = document.getElementById('filter_class').value;
+        if (filterVal) {
+            document.getElementById('course_class_id').value = filterVal;
+        }
+        
         
         // Highlight form
         const form = document.querySelector('.input-grid');
@@ -163,52 +190,26 @@
         setTimeout(() => form.style.background = 'none', 1000);
     }
 
-    function handleExcelUpload() {
-        const fileInput = document.getElementById('excel-file');
-        const status = document.getElementById('upload-status');
-        
-        if (fileInput.files.length === 0) return;
-        
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        
-        status.innerText = "Đang xử lý file Excel...";
-        status.style.color = "var(--primary)";
-        
-        fetch('/api/enroll/import', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                status.innerText = data.message;
-                status.style.color = "var(--success)";
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                status.innerText = "Lỗi: " + data.message;
-                status.style.color = "var(--danger)";
-            }
-        })
-        .catch(err => {
-            status.innerText = "Lỗi kết nối Server!";
-            status.style.color = "var(--danger)";
-        });
+    function filterByClass() {
+        const classId = document.getElementById('filter_class').value;
+        window.location.href = `/enroll?class_id=${classId}`;
     }
+
 
     function startEnroll() {
         const mssv = document.getElementById('mssv').value.trim();
         const name = document.getElementById('fullname').value.trim();
         const dob = document.getElementById('dob').value;
         const student_class = document.getElementById('student_class').value;
+        const course_class_id = document.getElementById('course_class_id').value;
         
         const statusMsg = document.getElementById('status-msg');
         const enrollBtn = document.getElementById('enroll-btn');
         const progressContainer = document.getElementById('progress-container');
         const progressBar = document.getElementById('progress-bar');
 
-        if(!mssv || !name || !student_class) {
-            statusMsg.innerText = "Vui lòng nhập đủ MSSV, Họ tên và chọn Lớp!";
+        if(!mssv || !name || !course_class_id) {
+            statusMsg.innerText = "Vui lòng nhập đủ MSSV, Họ tên và chọn Lớp học phần!";
             statusMsg.className = "status-msg msg-error";
             return;
         }
@@ -225,7 +226,7 @@
         fetch('/api/enroll/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mssv, name, dob, student_class })
+            body: JSON.stringify({ mssv, name, dob, student_class, course_class_id })
         })
         .then(res => res.json())
         .then(data => {
@@ -287,6 +288,27 @@
                 enrollBtn.disabled = false;
                 enrollBtn.innerText = btnText || "Bắt đầu thu thập khuôn mặt";
             }, 1500);
+        }
+    }
+    function clearClassStudents() {
+        const classId = '{{ selected_class_id }}';
+        if (!classId) return;
+        
+        if (confirm('BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ SINH VIÊN KHỎI LỚP NÀY?\n\nThao tác này chỉ xóa sinh viên khỏi danh sách lớp hiện tại, không xóa tài khoản sinh viên khỏi hệ thống.')) {
+            fetch('/api/enroll/clear_class', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ class_id: classId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            });
         }
     }
 </script>

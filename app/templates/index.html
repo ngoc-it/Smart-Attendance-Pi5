@@ -23,7 +23,7 @@
                         <tr>
                             <td>T{{ s[2] + 1 }}</td>
                             <td>{{ s[3] }} - {{ s[4] }}</td>
-                            <td>{{ s[6] }}</td>
+                            <td>{% if s[7] %}[{{ s[7] }}] {% endif %}{{ s[6] }}</td>
                             <td>{{ s[5] }}</td>
                         </tr>
                         {% endfor %}
@@ -40,7 +40,18 @@
         <div class="card" style="margin-bottom: 20px; height: 100%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="font-size: 1rem; margin: 0;">Danh sách Sinh viên ({{ students|length }})</h3>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="filter_class" onchange="filterByClass()" style="padding: 5px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;">
+                        <option value="">Tất cả lớp</option>
+                        {% for cls in classes %}
+                        <option value="{{ cls[0] }}" {% if selected_class_id == cls[0] %}selected{% endif %}>
+                            {% if cls[2] %}[{{ cls[2] }}] {% endif %}{{ cls[1] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if selected_class_id %}
+                    <button class="btn-action-danger" onclick="clearClassStudents()" style="padding: 5px 10px; background: rgba(231, 76, 60, 0.1); color: var(--danger); border: 1px solid var(--danger); border-radius: 6px; font-size: 0.8rem; cursor: pointer;">🗑️ Xóa toàn bộ SV</button>
+                    {% endif %}
                     <input type="file" id="excel-file" accept=".xlsx" style="display: none;" onchange="handleExcelUpload()">
                     <button class="btn-action-subtle" onclick="document.getElementById('excel-file').click()" style="background: var(--secondary); color: white;">📂 Import Excel</button>
                 </div>
@@ -101,10 +112,10 @@
             <!-- Pagination -->
             {% if pagination.total_pages > 1 %}
             <div class="pagination">
-                <a href="{{ url_for('attendance.index', page=pagination.current - 1) }}" 
+                <a href="{{ url_for('attendance.index', page=pagination.current - 1, class_id=selected_class_id) }}" 
                    class="pagination-btn {{ 'disabled' if not pagination.has_prev }}">‹</a>
                 <span class="pagination-info">{{ pagination.current }} / {{ pagination.total_pages }}</span>
-                <a href="{{ url_for('attendance.index', page=pagination.current + 1) }}" 
+                <a href="{{ url_for('attendance.index', page=pagination.current + 1, class_id=selected_class_id) }}" 
                    class="pagination-btn {{ 'disabled' if not pagination.has_next }}">›</a>
             </div>
             {% endif %}
@@ -232,6 +243,33 @@
     // Thêm timestamp để tránh bị trình duyệt block khi mở nhiều tab camera
     document.getElementById('dashboard-cam').src = "{{ url_for('attendance.video_feed') }}?t=" + new Date().getTime();
 
+    function filterByClass() {
+        const classId = document.getElementById('filter_class').value;
+        window.location.href = `/?class_id=${classId}`;
+    }
+
+    function clearClassStudents() {
+        const classId = '{{ selected_class_id }}';
+        if (!classId) return;
+        
+        if (confirm('BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ SINH VIÊN KHỎI LỚP NÀY?\n\nThao tác này chỉ xóa sinh viên khỏi danh sách lớp hiện tại, không xóa tài khoản sinh viên khỏi hệ thống.')) {
+            fetch('/api/enroll/clear_class', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ class_id: classId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            });
+        }
+    }
+
     // Excel Import
     function handleExcelUpload() {
         const fileInput = document.getElementById('excel-file');
@@ -239,6 +277,7 @@
         
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
+        formData.append('class_id', document.getElementById('filter_class').value);
         
         fetch('/api/enroll/import', {
             method: 'POST',
@@ -248,7 +287,7 @@
         .then(data => {
             if (data.status === 'success') {
                 alert(data.message);
-                location.reload();
+                window.location.href = `/?class_id=${data.class_id}`;
             } else {
                 alert("Lỗi: " + data.message);
             }
@@ -297,7 +336,8 @@
                 mssv: currentEnrollData.id, 
                 name: currentEnrollData.name, 
                 dob: currentEnrollData.dob, 
-                student_class: currentEnrollData.s_class 
+                student_class: currentEnrollData.s_class,
+                course_class_id: '{{ selected_class_id or "" }}'
             })
         })
         .then(res => res.json())

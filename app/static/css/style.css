@@ -85,22 +85,26 @@ header h1 {
 
 .sidebar-toggle {
     position: absolute;
-    left: -15px;
-    top: 30px;
-    width: 30px;
-    height: 30px;
-    background: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 50%;
+    left: 10px;
+    top: 15px;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     z-index: 100;
-    font-size: 0.8rem;
-    transition: all 0.3s;
+    font-size: 1.2rem;
+    transition: all 0.2s;
+}
+
+.right-sidebar.collapsed .sidebar-toggle {
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .sidebar-toggle:hover {
