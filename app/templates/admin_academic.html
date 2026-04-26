@@ -41,6 +41,7 @@
                             {% else %}-{% endif %}
                         </td>
                         <td style="white-space:nowrap;">
+                            <button class="btn btn-sm btn-edit-sem" data-id="{{ sem.id }}" data-name="{{ sem.name }}" data-start="{{ sem.start_date }}" data-end="{{ sem.end_date }}" style="background:#f0f0f0;">✏️</button>
                             {% if not sem.is_current %}
                             <button class="btn btn-success btn-sm btn-set-current-sem" data-id="{{ sem.id }}">✅ Chọn</button>
                             <button class="btn btn-danger btn-sm btn-del-sem" data-id="{{ sem.id }}">🗑</button>

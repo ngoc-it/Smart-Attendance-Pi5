@@ -22,9 +22,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Làm sáng nền bằng lớp phủ trắng mờ (rgba 255,255,255, 0.4) */
-    background: linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4)), 
-                url('/static/images/mtu_bg.jpg') no-repeat center center;
+    background: url('/static/images/mtu_bg.jpg') no-repeat center center;
     background-size: cover;
     padding: 20px;
 }

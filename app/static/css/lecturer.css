@@ -58,6 +58,13 @@
     border-color: #cbd5e0;
 }
 
+.page-link.active {
+    background: #0066cc;
+    color: white;
+    font-weight: bold;
+    border-color: #0066cc;
+}
+
 /* === BUTTONS & ACTIONS === */
 .btn-action-subtle {
     padding: 6px 12px;

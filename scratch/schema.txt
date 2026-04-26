@@ -1,0 +1,83 @@
+Table: students
+CREATE TABLE students 
+                (id TEXT PRIMARY KEY, name TEXT, dob TEXT, student_class TEXT, status TEXT DEFAULT 'OUT', last_seen TEXT)
+----------------------------------------
+Table: logs
+CREATE TABLE logs 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, student_id TEXT, action TEXT, time TEXT, image_path TEXT)
+----------------------------------------
+Table: sqlite_sequence
+CREATE TABLE sqlite_sequence(name,seq)
+----------------------------------------
+Table: classes
+CREATE TABLE classes 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, course_id INTEGER, code TEXT)
+----------------------------------------
+Table: users
+CREATE TABLE users 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT, name TEXT, code TEXT)
+----------------------------------------
+Table: user_classes
+CREATE TABLE user_classes 
+                (user_id INTEGER, class_id INTEGER, PRIMARY KEY (user_id, class_id))
+----------------------------------------
+Table: settings
+CREATE TABLE settings 
+                (key TEXT PRIMARY KEY, value TEXT)
+----------------------------------------
+Table: departments
+CREATE TABLE departments 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE)
+----------------------------------------
+Table: majors
+CREATE TABLE majors 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, department_id INTEGER,
+                 FOREIGN KEY(department_id) REFERENCES departments(id))
+----------------------------------------
+Table: courses
+CREATE TABLE courses 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, major_id INTEGER,
+                 FOREIGN KEY(major_id) REFERENCES majors(id))
+----------------------------------------
+Table: schedules
+CREATE TABLE schedules 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER, 
+                 weekday INTEGER, start_time TEXT, end_time TEXT, room TEXT, start_period_id INTEGER, num_periods INTEGER, room_id INTEGER,
+                 FOREIGN KEY(class_id) REFERENCES classes(id))
+----------------------------------------
+Table: leave_requests
+CREATE TABLE leave_requests 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, student_id TEXT, class_id INTEGER, 
+                 reason TEXT, date TEXT, status TEXT DEFAULT 'PENDING',
+                 FOREIGN KEY(student_id) REFERENCES students(id),
+                 FOREIGN KEY(class_id) REFERENCES classes(id))
+----------------------------------------
+Table: class_students
+CREATE TABLE class_students 
+                (class_id INTEGER, student_id TEXT, PRIMARY KEY (class_id, student_id),
+                 FOREIGN KEY(class_id) REFERENCES classes(id),
+                 FOREIGN KEY(student_id) REFERENCES students(id))
+----------------------------------------
+Table: semesters
+CREATE TABLE semesters
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, start_date TEXT, end_date TEXT, is_current INTEGER DEFAULT 0)
+----------------------------------------
+Table: class_sessions
+CREATE TABLE class_sessions
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER, 
+                 session_date TEXT, start_time TEXT, end_time TEXT, status TEXT DEFAULT 'SCHEDULED', room TEXT, room_id INTEGER,
+                 FOREIGN KEY(class_id) REFERENCES classes(id))
+----------------------------------------
+Table: rooms
+CREATE TABLE rooms 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, capacity INTEGER, has_camera INTEGER DEFAULT 1)
+----------------------------------------
+Table: periods
+CREATE TABLE periods 
+                (id INTEGER PRIMARY KEY, name TEXT UNIQUE, start_time TEXT, end_time TEXT)
+----------------------------------------
+Table: device_payloads
+CREATE TABLE device_payloads 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, room_id INTEGER, class_id INTEGER, 
+                 date TEXT, trigger_start TEXT, trigger_end TEXT, status TEXT DEFAULT 'PENDING')
+----------------------------------------

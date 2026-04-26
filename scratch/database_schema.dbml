@@ -1,0 +1,108 @@
+// Use this code at dbdiagram.io to generate an interactive diagram
+
+Table students {
+  id text [pk]
+  name text
+  dob text
+  student_class text
+  status text
+  last_seen text
+}
+
+Table logs {
+  id integer [pk, increment]
+  student_id text [ref: > students.id]
+  action text
+  time text
+  image_path text
+}
+
+Table users {
+  id integer [pk, increment]
+  username text [unique]
+  password text
+  role text
+  name text
+  code text
+}
+
+Table classes {
+  id integer [pk, increment]
+  name text [unique]
+  course_id integer [ref: > courses.id]
+  code text
+}
+
+Table user_classes {
+  user_id integer [pk, ref: > users.id]
+  class_id integer [pk, ref: > classes.id]
+}
+
+Table courses {
+  id integer [pk, increment]
+  name text [unique]
+  major_id integer [ref: > majors.id]
+}
+
+Table majors {
+  id integer [pk, increment]
+  name text [unique]
+  department_id integer [ref: > departments.id]
+}
+
+Table departments {
+  id integer [pk, increment]
+  name text [unique]
+}
+
+Table class_students {
+  class_id integer [pk, ref: > classes.id]
+  student_id text [pk, ref: > students.id]
+}
+
+Table schedules {
+  id integer [pk, increment]
+  class_id integer [ref: > classes.id]
+  weekday integer
+  start_time text
+  end_time text
+  room_id integer [ref: > rooms.id]
+}
+
+Table class_sessions {
+  id integer [pk, increment]
+  class_id integer [ref: > classes.id]
+  session_date text
+  start_time text
+  end_time text
+  status text
+  room_id integer [ref: > rooms.id]
+}
+
+Table rooms {
+  id integer [pk, increment]
+  name text [unique]
+  capacity integer
+  has_camera integer
+}
+
+Table leave_requests {
+  id integer [pk, increment]
+  student_id text [ref: > students.id]
+  class_id integer [ref: > classes.id]
+  reason text
+  date text
+  status text
+}
+
+Table periods {
+  id integer [pk]
+  name text [unique]
+  start_time text
+  end_time text
+}
+
+Table settings {
+  key text [pk]
+  value text
+}

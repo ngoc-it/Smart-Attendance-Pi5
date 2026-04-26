@@ -935,6 +935,35 @@ class AttendanceDB:
             cursor.execute("UPDATE semesters SET is_current = 1 WHERE id = ?", (semester_id,))
             conn.commit()
 
+    def update_semester(self, sem_id, name, start_date, end_date):
+        """Cập nhật thông tin học kỳ và đồng bộ lại toàn bộ buổi học"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE semesters 
+                    SET name = ?, start_date = ?, end_date = ? 
+                    WHERE id = ?
+                """, (name, start_date, end_date, sem_id))
+                conn.commit()
+            
+            # Sau khi đổi ngày, cần đồng bộ lại toàn bộ các lớp
+            # Senior Logic: Quét toàn bộ các lớp đang có và sinh lại session
+            self.regenerate_all_sessions()
+            return True, "Cập nhật thành công và đã đồng bộ lại toàn bộ buổi học."
+        except Exception as e:
+            return False, str(e)
+
+    def regenerate_all_sessions(self):
+        """Xóa và sinh lại toàn bộ session cho tất cả các lớp dựa trên TKB hiện tại"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM classes")
+            classes = cursor.fetchall()
+            
+        for (class_id,) in classes:
+            self.generate_sessions_for_class(class_id)
+
     # ---- MASTER DATA (ROOMS & PERIODS) ----
     def get_all_rooms(self):
         with self._get_conn() as conn:

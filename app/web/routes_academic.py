@@ -114,6 +114,15 @@ def set_current_semester(sem_id):
     db.set_current_semester(sem_id)
     return jsonify({"status": "success", "message": "Đã đặt làm học kỳ hiện tại"})
 
+@academic_bp.route('/semester/<int:sem_id>', methods=['PUT'])
+@admin_required
+def update_semester(sem_id):
+    data = request.json
+    success, msg = db.update_semester(sem_id, data['name'], data['start_date'], data['end_date'])
+    if success:
+        return jsonify({"status": "success", "message": msg})
+    return jsonify({"status": "error", "message": msg}), 400
+
 @academic_bp.route('/semester/<int:sem_id>', methods=['DELETE'])
 @admin_required
 def delete_semester(sem_id):

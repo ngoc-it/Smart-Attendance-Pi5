@@ -33,10 +33,11 @@ function showModal(type, id = null, data = {}) {
     const title = document.getElementById('modal-title');
 
     if (type === 'semester') {
-        title.textContent = 'Thêm Học kỳ';
-        body.innerHTML = `<div class="form-group"><label>Tên Học kỳ</label><input type="text" id="m-name" placeholder="VD: HK1 2025-2026" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
-        <div class="form-group"><label>Ngày bắt đầu</label><input type="date" id="m-start" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
-        <div class="form-group"><label>Ngày kết thúc</label><input type="date" id="m-end" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>`;
+        title.textContent = id ? 'Sửa Học kỳ' : 'Thêm Học kỳ';
+        body.innerHTML = `<div class="form-group"><label>Tên Học kỳ</label><input type="text" id="m-name" value="${data.name || ''}" placeholder="VD: HK1 2025-2026" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
+        <div class="form-group"><label>Ngày bắt đầu</label><input type="date" id="m-start" value="${data.start || ''}" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
+        <div class="form-group"><label>Ngày kết thúc</label><input type="date" id="m-end" value="${data.end || ''}" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
+        ${id ? `<p style="color:red;font-size:0.8rem;margin-top:10px;">⚠️ Lưu ý: Khi đổi ngày, toàn bộ buổi học của các lớp trong hệ thống sẽ được tính toán lại.</p>` : ''}`;
     } else if (type === 'room') {
         title.textContent = id ? 'Sửa Phòng học' : 'Thêm Phòng học';
         body.innerHTML = `<div class="form-group"><label>Tên phòng</label><input type="text" id="m-name" value="${data.name || ''}" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
@@ -76,7 +77,7 @@ function saveModal() {
     if (modalAction === 'semester') {
         const start = document.getElementById('m-start').value;
         const end = document.getElementById('m-end').value;
-        apiCall(`${BASE}/semester`, 'POST', { name, start_date: start, end_date: end }, () => location.reload());
+        apiCall(modalId ? `${BASE}/semester/${modalId}` : `${BASE}/semester`, modalId ? 'PUT' : 'POST', { name, start_date: start, end_date: end }, () => location.reload());
     } else if (modalAction === 'room') {
         const cap = parseInt(document.getElementById('m-cap').value) || 50;
         const cam = document.getElementById('m-cam').checked ? 1 : 0;
@@ -98,6 +99,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (target.id === 'btn-modal-save') saveModal();
 
         const id = target.dataset.id;
+        if (target.classList.contains('btn-edit-sem')) {
+            showModal('semester', id, { name: target.dataset.name, start: target.dataset.start, end: target.dataset.end });
+        }
         if (target.classList.contains('btn-edit-room')) {
             showModal('room', id, { name: target.dataset.name, cap: target.dataset.cap, cam: target.dataset.cam === 'True' });
         }

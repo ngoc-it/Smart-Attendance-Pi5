@@ -12,17 +12,27 @@
         <div class="card" style="height: 100%;">
             <h3 style="font-size: 1rem; color: var(--primary); margin-top: 0;">Live AI Camera Feed</h3>
             <div style="background: #000; border-radius: 8px; overflow: hidden; position: relative; aspect-ratio: 4/3;">
-                <img id="video-feed-img" src="{{ url_for('attendance.video_feed') }}" style="width: 100%; height: 100%; object-fit: cover;">
+                <img id="video-feed-img" src="{{ url_for('attendance.video_feed') }}"
+                    style="width: 100%; height: 100%; object-fit: cover;">
             </div>
-            
+
             <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
                 <h4 style="font-size: 0.9rem; color: var(--success); margin-bottom: 10px;">Lịch dạy của bạn</h4>
                 <table style="font-size: 0.8rem; width: 100%;">
-                    <thead><tr><th>THỨ</th><th>GIỜ</th><th>LỚP</th><th>PHÒNG</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>THỨ</th>
+                            <th>GIỜ</th>
+                            <th>LỚP</th>
+                            <th>PHÒNG</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         {% for sch in schedule %}
                         <tr>
-                            <td><strong>{{ ['','','CN','T2','T3','T4','T5','T6','T7','T8'][sch.weekday] if sch.weekday < 10 else sch.weekday }}</strong></td>
+                            <td><strong>{{ ['','','CN','T2','T3','T4','T5','T6','T7','T8'][sch.weekday] if sch.weekday <
+                                        10 else sch.weekday }}</strong>
+                            </td>
                             <td><small>{{ sch.start_time }} - {{ sch.end_time }}</small></td>
                             <td>{{ sch.class_name }}</td>
                             <td><code>{{ sch.room_name }}</code></td>
@@ -38,10 +48,11 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="font-size: 1rem; margin: 0;">Danh sách Sinh viên ({{ total_students }})</h3>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <select id="filter_class" onchange="filterByClass()" style="padding: 5px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;">
+                    <select id="filter_class" onchange="filterByClass()"
+                        style="padding: 5px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;">
                         <option value="">Tất cả lớp</option>
                         {% for cls in classes %}
-                        <option value="{{ cls[0] }}" {% if selected_class_id == cls[0] %}selected{% endif %}>
+                        <option value="{{ cls[0] }}" {% if selected_class_id==cls[0] %}selected{% endif %}>
                             {% if cls[2] %}[{{ cls[2] }}] {% endif %}{{ cls[1] }}
                         </option>
                         {% endfor %}
@@ -49,22 +60,25 @@
                     {% if selected_class_id %}
                     <button class="btn-action-danger" onclick="clearClassStudents()">🗑️ Xóa toàn bộ SV</button>
                     {% endif %}
-                    <input type="file" id="excel-file" accept=".xlsx" style="display: none;" onchange="handleExcelUpload()">
-                    <button class="btn-action-subtle" onclick="document.getElementById('excel-file').click()">📂 <span>Import Excel</span></button>
+                    <input type="file" id="excel-file" accept=".xlsx" style="display: none;"
+                        onchange="handleExcelUpload()">
+                    <button class="btn-action-subtle" onclick="document.getElementById('excel-file').click()">📂
+                        <span>Import Excel</span></button>
                 </div>
             </div>
 
             <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="Tìm kiếm theo MSSV hoặc Tên..." onkeyup="filterTable()">
+                <input type="text" id="searchInput" placeholder="Tìm kiếm theo MSSV hoặc Tên..."
+                    onkeyup="filterTable()">
             </div>
-            
+
             <div class="table-wrapper">
                 <table id="studentTable">
                     <thead>
                         <tr>
                             <th>MSSV</th>
                             <th>HỌ TÊN</th>
-                            <th style="color:#666;">ẢNH AI</th>
+                            <th style="color:#666;">ẢNH</th>
                             <th>TRẠNG THÁI</th>
                             <th>ĐIỂM DANH</th>
                             <th style="text-align: right;">THAO TÁC</th>
@@ -88,13 +102,16 @@
                             </td>
                             <td>
                                 <div style="display:flex; gap:6px;">
-                                    <button onclick="updateStatus('{{ student[0] }}', 'IN')" class="btn-action-subtle btn-in">IN</button>
-                                    <button onclick="updateStatus('{{ student[0] }}', 'OUT')" class="btn-action-subtle btn-out">OUT</button>
+                                    <button onclick="updateStatus('{{ student[0] }}', 'IN')"
+                                        class="btn-action-subtle btn-in">IN</button>
+                                    <button onclick="updateStatus('{{ student[0] }}', 'OUT')"
+                                        class="btn-action-subtle btn-out">OUT</button>
                                 </div>
                             </td>
                             <td style="text-align: right;">
                                 <div style="display:flex; justify-content: flex-end; gap:6px;">
-                                    <a href="{{ url_for('enroll.enroll_page', student_id=student[0]) }}" class="action-icon-btn" title="Đăng ký khuôn mặt">📸</a>
+                                    <a href="{{ url_for('enroll.enroll_page', student_id=student[0]) }}"
+                                        class="action-icon-btn" title="Đăng ký khuôn mặt">📸</a>
                                     <button class="action-icon-btn" title="Sửa">✏️</button>
                                     <button class="action-icon-btn delete" title="Xóa">🗑</button>
                                 </div>
@@ -107,13 +124,23 @@
 
             <!-- Phân trang -->
             {% if pagination.total_pages > 1 %}
-            <div style="display: flex; gap: 5px; margin-top: 20px; justify-content: center;">
+            <div style="display: flex; gap: 5px; margin-top: 20px; justify-content: center; align-items: center;">
+                {% if pagination.has_prev %}
+                <a href="?page={{ pagination.current - 1 }}{% if selected_class_id %}&class_id={{ selected_class_id }}{% endif %}"
+                    class="page-link" title="Trang trước">&lt;</a>
+                {% endif %}
+
                 {% for p in range(1, pagination.total_pages + 1) %}
-                <a href="?page={{ p }}{% if selected_class_id %}&class_id={{ selected_class_id }}{% endif %}" 
-                   class="page-link {% if p == pagination.current %}active{% endif %}">
+                <a href="?page={{ p }}{% if selected_class_id %}&class_id={{ selected_class_id }}{% endif %}"
+                    class="page-link {% if p == pagination.current %}active{% endif %}">
                     {{ p }}
                 </a>
                 {% endfor %}
+
+                {% if pagination.has_next %}
+                <a href="?page={{ pagination.current + 1 }}{% if selected_class_id %}&class_id={{ selected_class_id }}{% endif %}"
+                    class="page-link" title="Trang sau">&gt;</a>
+                {% endif %}
             </div>
             {% endif %}
         </div>
