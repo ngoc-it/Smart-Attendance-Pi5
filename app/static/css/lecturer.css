@@ -1,0 +1,140 @@
+/* === LECTURER DASHBOARD STYLES === */
+.control-section {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.table-wrapper {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.in { background: #e6f4ea; color: #1e7e34; }
+.status-badge.out { background: #fdf2f2; color: #9b1c1c; }
+.status-badge.registered { background: #f0f7ff; color: #0056b3; }
+
+.search-bar {
+    margin-bottom: 15px;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 1024px) {
+    .control-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+.page-link {
+    padding: 5px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #4a5568;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.page-link:hover {
+    background: #f7fafc;
+    border-color: #cbd5e0;
+}
+
+/* === BUTTONS & ACTIONS === */
+.btn-action-subtle {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-action-subtle:hover {
+    background: #f8fafc;
+    border-color: #cbd5e0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Nút IN / OUT */
+.btn-in {
+    color: #059669 !important;
+    border: 1px solid #10b981 !important;
+    background: #ecfdf5 !important;
+}
+.btn-in:hover { background: #d1fae5 !important; }
+
+.btn-out {
+    color: #dc2626 !important;
+    border: 1px solid #ef4444 !important;
+    background: #fef2f2 !important;
+}
+.btn-out:hover { background: #fee2e2 !important; }
+
+/* Nút Xóa toàn bộ SV */
+.btn-action-danger {
+    padding: 6px 12px;
+    background: #fff1f2 !important;
+    color: #e11d48 !important;
+    border: 1px solid #fda4af !important;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-action-danger:hover {
+    background: #ffe4e6 !important;
+    border-color: #fb7185 !important;
+}
+
+/* Biểu tượng thao tác (📸, ✏️, 🗑) */
+.action-icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #edf2f7;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-icon-btn:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+}
+
+.action-icon-btn.delete:hover {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #dc2626;
+}

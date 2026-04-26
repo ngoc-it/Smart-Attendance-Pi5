@@ -41,6 +41,7 @@ def index():
     pagination = {
         "current": page,
         "total_pages": (total_students + per_page - 1) // per_page,
+        "total_items": total_students,
         "has_next": page * per_page < total_students,
         "has_prev": page > 1
     }
@@ -48,6 +49,7 @@ def index():
     return render_template('index.html', 
                            students=students, 
                            pagination=pagination,
+                           total_students=total_students,
                            schedule=schedule,
                            leave_requests=leave_requests,
                            face_status=face_status,
@@ -258,3 +260,10 @@ def manual_action():
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
+
+@attendance_bp.route('/images/<path:filename>')
+@login_required
+def serve_image(filename):
+    from flask import send_from_directory
+    from config import Config
+    return send_from_directory(Config.LOG_IMAGES_DIR, filename)

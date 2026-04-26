@@ -46,7 +46,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="{{ url_for('admin.academic_page') }}" class="{% if request.endpoint == 'admin.academic_page' %}active{% endif %}">
+                    <a href="{{ url_for('academic.academic_page') }}" class="{% if 'academic' in request.endpoint %}active{% endif %}">
                         <i>🎓</i> <span>Quản lý Học thuật</span>
                     </a>
                 </li>

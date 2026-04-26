@@ -1,0 +1,78 @@
+/* === ADMIN SYSTEM DASHBOARD STYLES === */
+.pagination { 
+    display: flex; 
+    gap: 8px; 
+    margin-top: 20px; 
+    justify-content: center; 
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #718096;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.tab-btn:hover:not(.active) {
+    color: #4a5568;
+    background: #f7fafc;
+}
+
+/* Biểu tượng thao tác (✏️, 🗑) - Shared from lecturer.css but defining here too for independence */
+.action-icon-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid #edf2f7;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-icon-btn:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+}
+
+.action-icon-btn.delete:hover {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+/* Modal Overlay Enhancement */
+#modal-overlay {
+    backdrop-filter: blur(2px);
+}
+
+.btn-view-students-styled {
+    background: #f0f7ff;
+    color: var(--primary);
+    font-weight: 600;
+    border: 1px solid #c3dafe;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+}
+
+.btn-view-students-styled:hover {
+    background: #ebf4ff;
+    border-color: var(--primary);
+    box-shadow: 0 2px 4px rgba(66, 153, 225, 0.15);
+}

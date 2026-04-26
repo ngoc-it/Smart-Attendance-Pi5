@@ -14,6 +14,19 @@ def kiosk_page():
     """Giao diện Kiosk dành cho màn hình cảm ứng"""
     return render_template('kiosk.html')
 
+@kiosk_bp.route('/api/kiosk/current_session', methods=['GET'])
+def get_current_session():
+    """Lấy thông tin ca học đang diễn ra (nếu có)"""
+    session = db.get_active_session()
+    if session:
+        return jsonify({
+            "status": "active",
+            "class_name": session['class_name'],
+            "start_time": session['start_time'],
+            "end_time": session['end_time']
+        })
+    return jsonify({"status": "idle"})
+
 @kiosk_bp.route('/api/kiosk/check', methods=['POST'])
 def kiosk_check():
     """Xử lý điểm danh khi sinh viên bấm nút"""
@@ -30,16 +43,27 @@ def kiosk_check():
         if not success:
             return jsonify({"status": "error", "message": msg}), 400
             
-        # 3. Lấy thông tin sinh viên từ DB
-        students = db.get_all_students()
-        student_name = "Unknown"
-        current_status = "OUT"
+        # Kiểm tra Session hiện tại
+        active_session = db.get_active_session()
+        if not active_session:
+            return jsonify({"status": "error", "message": "Hiện không có ca học nào đang diễn ra. Vui lòng chờ!"}), 403
+            
+        class_id = active_session['class_id']
         
+        # 3. Lấy thông tin sinh viên từ DB (Chỉ lấy sinh viên của lớp hiện tại)
+        students = db.get_all_students(class_id=class_id, per_page=1000)
+        
+        student_data = None
         for s in students:
             if s[0] == student_id:
-                student_name = s[1]
-                current_status = s[4]
+                student_data = s
                 break
+                
+        if not student_data:
+            return jsonify({"status": "error", "message": f"Bạn không có trong danh sách lớp {active_session['class_name']}!"}), 403
+            
+        student_name = student_data[1]
+        current_status = student_data[4]
                 
         # 4. Quyết định hành động (IN / OUT)
         # Tự động đảo ngược trạng thái. Nếu là REGISTERED hoặc OUT thì thành IN. Nếu IN thì thành OUT.

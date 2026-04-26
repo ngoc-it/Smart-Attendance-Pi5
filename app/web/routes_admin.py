@@ -17,6 +17,11 @@ def dashboard():
     classes = db.get_all_classes(page=page_cls, per_page=per_page)
     total_cls = db.get_class_count()
     
+    # Lấy dữ liệu danh mục cho Quản trị hệ thống
+    depts = db.get_all_departments()
+    majors = db.get_all_majors()
+    courses = db.get_all_courses()
+    
     pagination_gv = {
         "current": page_gv,
         "total_pages": (total_gv + per_page - 1) // per_page,
@@ -31,12 +36,12 @@ def dashboard():
         "has_prev": page_cls > 1
     }
     
-    all_classes = db.get_all_classes(page=1, per_page=1000) # Lấy hầu hết để gán
-    
     return render_template('admin_dashboard.html', 
                            lecturers=lecturers, 
                            classes=classes,
-                           all_classes=all_classes,
+                           depts=depts,
+                           majors=majors,
+                           courses=courses,
                            pag_gv=pagination_gv,
                            pag_cls=pagination_cls)
 
@@ -94,6 +99,20 @@ def update_class(class_id):
         return jsonify({"status": "success", "message": "Cập nhật lớp học thành công"})
     return jsonify({"status": "error", "message": "Lỗi cập nhật lớp học"}), 400
 
+@admin_bp.route('/class/<int:class_id>/students', methods=['GET'])
+@admin_required
+def get_class_students(class_id):
+    cls = db.get_class_by_id(class_id)
+    if not cls:
+        return jsonify({"status": "error", "message": "Lớp không tồn tại"}), 404
+    # Sử dụng hàm chuẩn để lấy sinh viên theo class_id (đồng bộ với GV)
+    students = db.get_all_students(class_id=class_id, per_page=1000)
+    return jsonify({
+        "status": "success",
+        "class_name": cls['name'],
+        "students": [dict(s) for s in students]
+    })
+
 # ---- ASSIGNMENT ROUTES ----
 @admin_bp.route('/lecturer/<int:user_id>/classes', methods=['GET'])
 @admin_required
@@ -131,20 +150,8 @@ def update_settings():
     data = request.form
     for key, value in data.items():
         db.update_setting(key, value)
-    
-    # Refresh AI Engine threshold
     ai_engine.refresh_settings()
-    
     return jsonify({"status": "success", "message": "Cấu hình đã được cập nhật"})
-
-# ---- ACADEMIC MANAGEMENT ----
-@admin_bp.route('/academic', methods=['GET'])
-@admin_required
-def academic_page():
-    depts = db.get_all_departments()
-    majors = db.get_majors()
-    courses = db.get_courses()
-    return render_template('admin_academic.html', depts=depts, majors=majors, courses=courses)
 
 @admin_bp.route('/export/students', methods=['GET'])
 @admin_required
@@ -152,15 +159,12 @@ def export_students():
     import csv
     from io import StringIO
     from flask import make_response
-    
-    students = db.get_all_students(per_page=10000) # Lấy tất cả
-    
+    students = db.get_all_students(per_page=10000)
     si = StringIO()
     cw = csv.writer(si)
     cw.writerow(['MSSV', 'Họ Tên', 'Ngày sinh', 'Lớp', 'Ngày đăng ký'])
     for s in students:
         cw.writerow([s[0], s[1], s[2], s[3], s[5]])
-    
     output = make_response(si.getvalue())
     output.headers["Content-Disposition"] = "attachment; filename=students_export.csv"
     output.headers["Content-type"] = "text/csv"
@@ -171,32 +175,24 @@ def export_students():
 def import_students():
     import csv
     from io import TextIOWrapper
-    
     if 'file' not in request.files:
         return jsonify({"status": "error", "message": "Không tìm thấy file"}), 400
-        
     file = request.files['file']
     if file.filename == '':
         return jsonify({"status": "error", "message": "Chưa chọn file"}), 400
-        
     try:
         csv_file = TextIOWrapper(file, encoding='utf-8')
         reader = csv.DictReader(csv_file)
-        
         count = 0
         for row in reader:
-            # MSSV, Họ Tên, Ngày sinh, Lớp
-            # row keys must match CSV header
             s_id = row.get('MSSV')
             s_name = row.get('Họ Tên')
             s_dob = row.get('Ngày sinh', '')
             s_class = row.get('Lớp', '')
-            
             if s_id and s_name:
                 if not db.check_student_exists(s_id):
                     db.enroll_student(s_id, s_name, s_dob, s_class)
                     count += 1
-                    
-        return jsonify({"status": "success", "message": f"Đã nhập thành công {count} sinh viên. Lưu ý: Cần đăng ký khuôn mặt thủ công cho từng người."})
+        return jsonify({"status": "success", "message": f"Đã nhập thành công {count} sinh viên."})
     except Exception as e:
         return jsonify({"status": "error", "message": f"Lỗi: {str(e)}"}), 500

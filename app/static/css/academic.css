@@ -1,0 +1,38 @@
+/* === ACADEMIC MANAGEMENT STYLES === */
+.tab-btn {
+    padding: 8px 18px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+}
+
+.tab-btn:hover {
+    background: #f5f5f5;
+}
+
+.admin-container {
+    padding: 20px 0;
+}
+
+.table-wrapper {
+    background: white;
+    border-radius: 8px;
+}
+
+/* Custom styles for academic management components */
+.card h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}

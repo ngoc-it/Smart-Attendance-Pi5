@@ -21,6 +21,10 @@ def enroll_page():
     user_id = session.get('user_id')
     
     class_id = request.args.get('class_id', type=int)
+    student_id = request.args.get('student_id')
+    student_data = None
+    if student_id:
+        student_data = db.get_student_by_id(student_id)
     
     if user_role == 'admin':
         classes = db.get_all_classes(per_page=100)
@@ -52,7 +56,8 @@ def enroll_page():
                            students=students,
                            face_status=face_status,
                            selected_class_id=class_id,
-                           pagination=pagination)
+                           pagination=pagination,
+                           student=student_data)
 
 @enroll_bp.route('/api/enroll/import', methods=['POST'])
 @lecturer_required
@@ -130,10 +135,9 @@ def enroll_start():
         if not s_id or not s_name:
             return jsonify({"status": "error", "message": "Thiếu MSSV hoặc Họ tên"}), 400
             
-        # Kiểm tra trùng MSSV
-        if db.check_student_exists(s_id):
-            return jsonify({"status": "error", "message": "MSSV này đã tồn tại trong hệ thống!"}), 400
-            
+        # Không chặn nếu MSSV đã tồn tại (vì có thể đã import từ Excel hoặc muốn nạp lại khuôn mặt)
+        # Hệ thống sẽ tự động cập nhật thông tin và ghi đè khuôn mặt mới.
+        
         # Kiểm tra tiến trình đăng ký đang chạy
         with shared.enroll_lock:
             if shared.enroll_state.get("status") == "processing":

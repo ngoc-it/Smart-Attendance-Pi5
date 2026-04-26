@@ -1,126 +1,110 @@
 {% extends "base.html" %}
-
-{% block title %}Báo cáo Điểm danh Chi tiết - Smart Attendance{% endblock %}
+{% block title %}Báo cáo & Thống kê - Smart Attendance{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="reports-container">
-    
-    <!-- Filter Section -->
-    <div class="card filter-card">
-        <form method="GET" action="{{ url_for('attendance.reports') }}" class="filter-form">
-            <div class="filter-group">
-                <label>Chọn Ngày:</label>
-                <input type="date" name="date" value="{{ selected_date }}">
-            </div>
-            
-            <div class="filter-group">
-                <label>Chọn Lớp:</label>
-                <select name="class_id">
-                    <option value="">-- Chọn lớp học --</option>
-                    {% for cls in classes %}
-                    <option value="{{ cls[0] }}" {% if selected_class_id == cls[0]|string or selected_class_id == cls[0] %}selected{% endif %}>
-                        {% if cls[2] %}[{{ cls[2] }}] {% endif %}{{ cls[1] }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">Xem Báo Cáo</button>
-            
-            {% if selected_class_id %}
-            <a href="{{ url_for('attendance.export_excel', date=selected_date, class_id=selected_class_id) }}" class="btn btn-success">
-                <i>📁</i> Xuất Excel
-            </a>
-            {% endif %}
-        </form>
+<div class="admin-container">
+    <div class="admin-header-row" style="margin-bottom: 24px; justify-content: space-between;">
+        <h2 style="border-bottom: none; margin-bottom: 0;">📊 Báo cáo điểm danh</h2>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <input type="date" id="report_date" value="{{ selected_date }}" class="form-control" onchange="filterReport()" style="width: 160px;">
+            <select id="report_class" class="form-control" onchange="filterReport()" style="width: 250px;">
+                <option value="">-- Chọn lớp học --</option>
+                {% for cls in classes %}
+                <option value="{{ cls[0] }}" {% if selected_class_id == cls[0] %}selected{% endif %}>
+                    {% if cls[2] %}[{{ cls[2] }}] {% endif %}{{ cls[1] }}
+                </option>
+                {% endfor %}
+            </select>
+            <button onclick="exportExcel()" class="btn-export">📥 Xuất Excel</button>
+        </div>
     </div>
 
-    {% if selected_class_id %}
-        {% if stats %}
+    {% if stats %}
+    <div class="reports-container">
+        <!-- Thống kê nhanh -->
         <div class="stats-grid">
-            <div class="stat-card total">
-                <div class="stat-value">{{ stats.total }}</div>
-                <div class="stat-label">Tổng số sinh viên</div>
+            <div class="stat-card">
+                <div class="stat-label">Sĩ số lớp</div>
+                <div class="stat-value" style="color: var(--primary);">{{ stats.total }}</div>
             </div>
-            <div class="stat-card present">
-                <div class="stat-value">{{ stats.present }}</div>
+            <div class="stat-card">
                 <div class="stat-label">Có mặt</div>
+                <div class="stat-value" style="color: var(--success);">{{ stats.present }}</div>
             </div>
-            <div class="stat-card absent">
-                <div class="stat-value">{{ stats.absent }}</div>
+            <div class="stat-card">
                 <div class="stat-label">Vắng mặt</div>
+                <div class="stat-value" style="color: var(--danger);">{{ stats.absent }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Tỉ lệ tham gia</div>
+                <div class="stat-value" style="color: var(--warning);">
+                    {{ ((stats.present / stats.total) * 100)|round(1) if stats.total > 0 else 0 }}%
+                </div>
             </div>
         </div>
-        {% endif %}
 
-        <div class="card">
-            <h2>Chi tiết điểm danh lớp: {{ current_class_name }} ({{ selected_date }})</h2>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>MSSV</th>
-                            <th>Họ và Tên</th>
-                            <th>Giờ Vào (IN)</th>
-                            <th>Giờ Ra (OUT)</th>
-                            <th>Trạng thái</th>
-                            <th>Ảnh Check-in</th>
-                            <th>Ảnh Check-out</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in report %}
-                        <tr>
-                            <td><strong>{{ row.id }}</strong></td>
-                            <td>{{ row.name }}</td>
-                            <td>{{ row.in_time }}</td>
-                            <td>{{ row.out_time }}</td>
-                            <td>
-                                <span class="status-badge 
-                                    {% if row.status == 'Hoàn thành' %}in
-                                    {% elif row.status == 'Có mặt' or row.status == 'Chưa Checkout' %}registered
-                                    {% elif row.status == 'Vắng' %}out
-                                    {% else %}warning{% endif %}">
-                                    {{ row.status }}
-                                </span>
-                            </td>
-                            <td>
-                                {% if row.in_image %}
-                                <div class="proof-img-box" title="Ảnh vào">
-                                    <img src="/api/serve_image/{{ row.in_image }}" alt="In">
-                                    <div class="img-label">IN</div>
-                                </div>
-                                {% else %}
-                                <span style="color: #ccc; font-size: 0.8rem; font-style: italic;">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if row.out_image %}
-                                <div class="proof-img-box" title="Ảnh ra">
-                                    <img src="/api/serve_image/{{ row.out_image }}" alt="Out">
-                                    <div class="img-label">OUT</div>
-                                </div>
-                                {% else %}
-                                <span style="color: #ccc; font-size: 0.8rem; font-style: italic;">-</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <!-- Bảng chi tiết -->
+        <div class="table-wrapper">
+            <div style="padding: 20px; border-bottom: 1px solid #edf2f7; background: #fff; font-weight: 700;">
+                Chi tiết điểm danh: {{ current_class_name }} ({{ selected_date }})
             </div>
+            <table class="attendance-table">
+                <thead>
+                    <tr>
+                        <th>MSSV</th>
+                        <th>HỌ VÀ TÊN</th>
+                        <th>GIỜ VÀO</th>
+                        <th>GIỜ RA</th>
+                        <th>TRẠNG THÁI</th>
+                        <th style="text-align: center;">ẢNH VÀO</th>
+                        <th style="text-align: center;">ẢNH RA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in report %}
+                    <tr>
+                        <td style="font-family: monospace; font-weight: 600;">{{ r.id }}</td>
+                        <td><strong>{{ r.name }}</strong></td>
+                        <td>{{ r.in_time or '-' }}</td>
+                        <td>{{ r.out_time or '-' }}</td>
+                        <td>
+                            <span class="status-badge {{ r.status|replace(' ', '-')|lower }}">
+                                {{ r.status }}
+                            </span>
+                        </td>
+                        <td style="text-align: center;">
+                            {% if r.in_image %}
+                            <img src="{{ url_for('attendance.serve_image', filename=r.in_image) }}" class="snapshot-img" alt="In Proof">
+                            {% else %}
+                            <small style="color: #cbd5e0;">N/A</small>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            {% if r.out_image %}
+                            <img src="{{ url_for('attendance.serve_image', filename=r.out_image) }}" class="snapshot-img" alt="Out Proof">
+                            {% else %}
+                            <small style="color: #cbd5e0;">N/A</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+    </div>
     {% else %}
-        <div class="empty-state">
-            <div style="font-size: 3rem; margin-bottom: 20px;">📊</div>
-            <h3>Vui lòng chọn Lớp học và Ngày để xem báo cáo chi tiết.</h3>
-            <p>Hệ thống sẽ liệt kê toàn bộ danh sách lớp và xác định ai đi học, ai vắng.</p>
-        </div>
+    <div class="card" style="text-align: center; padding: 100px 20px; color: #a0aec0;">
+        <i style="font-size: 4rem; display: block; margin-bottom: 20px;">📂</i>
+        Vui lòng chọn ngày và lớp học để xem báo cáo.
+    </div>
     {% endif %}
-
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/reports.js') }}"></script>
 {% endblock %}

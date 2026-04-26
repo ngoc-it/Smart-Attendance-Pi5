@@ -1,106 +1,157 @@
 {% extends "base.html" %}
+{% block title %}Quản lý Học thuật{% endblock %}
 
-{% block title %}Quản lý Học thuật - Smart Attendance{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/academic.css') }}">
+{% endblock %}
 
 {% block content %}
 <div class="admin-container">
-    <div class="admin-header-row" style="margin-bottom: 24px;">
-        <h2 style="border-bottom: none; margin-bottom: 0;">Quản lý Học thuật</h2>
-        <div class="admin-actions" style="display: flex; gap: 10px;">
-            <div style="display: flex; align-items: center; background: #eee; padding: 5px 10px; border-radius: 8px; gap: 10px;">
-                <input type="file" id="import-file" accept=".csv" style="font-size: 0.8rem;">
-                <button class="btn btn-success" onclick="importStudents();" style="padding: 5px 15px;">⬆️ Nhập CSV</button>
+    <div class="admin-header-row" style="margin-bottom:20px;">
+        <h2 style="border-bottom:none;margin-bottom:0;">🎓 Quản lý Học thuật</h2>
+    </div>
+
+    <!-- TABS -->
+    <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid #eee;">
+        <button class="tab-btn active" data-tab="tab-semester">📅 Học kỳ</button>
+        <button class="tab-btn" data-tab="tab-room">🏫 Phòng học</button>
+        <button class="tab-btn" data-tab="tab-schedule">🗓 Thời khóa biểu</button>
+    </div>
+
+    <!-- TAB 1: SEMESTER -->
+    <div id="tab-semester" class="tab-content">
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h3 style="font-size:1rem;margin:0;">Quản lý Học kỳ</h3>
+                <button class="btn btn-primary btn-add" data-type="semester">+ Thêm Học kỳ</button>
             </div>
-            <button class="btn btn-primary" onclick="exportStudents();">📥 Xuất CSV</button>
+            <table>
+                <thead>
+                    <tr><th>Tên Học kỳ</th><th>Từ ngày</th><th>Đến ngày</th><th>Trạng thái</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for sem in semesters %}
+                    <tr {% if sem.is_current %}style="background:#e6f4ea;"{% endif %}>
+                        <td><strong>{{ sem.name }}</strong></td>
+                        <td>{{ sem.start_date }}</td>
+                        <td>{{ sem.end_date }}</td>
+                        <td>
+                            {% if sem.is_current %}
+                            <span style="color:green;font-weight:bold;">Đang diễn ra</span>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td style="white-space:nowrap;">
+                            {% if not sem.is_current %}
+                            <button class="btn btn-success btn-sm btn-set-current-sem" data-id="{{ sem.id }}">✅ Chọn</button>
+                            <button class="btn btn-danger btn-sm btn-del-sem" data-id="{{ sem.id }}">🗑</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div class="admin-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
-        <!-- Khoa -->
+    <!-- TAB 2: ROOMS -->
+    <div id="tab-room" class="tab-content" style="display:none;">
         <div class="card">
-            <h3 style="color: var(--primary); font-size: 1rem; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">Danh sách Khoa</h3>
-            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
-                <table>
-                    <thead>
-                        <tr><th>ID</th><th>Tên Khoa</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for d in depts %}
-                        <tr><td>{{ d[0] }}</td><td>{{ d[1] }}</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h3 style="font-size:1rem;margin:0;">Quản lý Phòng học</h3>
+                <button class="btn btn-primary btn-add" data-type="room">+ Thêm Phòng</button>
             </div>
-        </div>
-
-        <!-- Ngành -->
-        <div class="card">
-            <h3 style="color: var(--success); font-size: 1rem; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">Danh sách Ngành</h3>
-            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
-                <table>
-                    <thead>
-                        <tr><th>ID</th><th>Tên Ngành</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for m in majors %}
-                        <tr><td>{{ m[0] }}</td><td>{{ m[1] }}</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Học phần -->
-        <div class="card">
-            <h3 style="color: var(--warning); font-size: 1rem; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">Danh sách Học phần</h3>
-            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
-                <table>
-                    <thead>
-                        <tr><th>ID</th><th>Tên Học phần</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for c in courses %}
-                        <tr><td>{{ c[0] }}</td><td>{{ c[1] }}</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <table>
+                <thead>
+                    <tr><th>Tên phòng</th><th>Sức chứa</th><th>Camera</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for r in rooms %}
+                    <tr>
+                        <td><strong>{{ r['name'] }}</strong></td>
+                        <td>{{ r['capacity'] }}</td>
+                        <td>{% if r['has_camera'] %}✅ Có{% else %}❌ Không{% endif %}</td>
+                        <td style="white-space:nowrap;">
+                            <button class="btn btn-sm btn-edit-room" data-id="{{ r['id'] }}" data-name="{{ r['name'] }}" data-cap="{{ r['capacity'] }}" data-cam="{{ r['has_camera'] }}" style="background:#f0f0f0;">✏️</button>
+                            <button class="btn btn-danger btn-sm btn-del-room" data-id="{{ r['id'] }}">🗑</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div class="card" style="margin-top: 24px;">
-        <h3 style="color: var(--danger); font-size: 1.1rem; margin-bottom: 15px;">Thời khóa biểu & Lịch học</h3>
-        <p style="color: #666; font-size: 0.9rem;">Tính năng lập lịch học chi tiết cho từng ca và phòng học đang được cập nhật trong phiên bản tiếp theo.</p>
+    <!-- TAB 3: SCHEDULE -->
+    <div id="tab-schedule" class="tab-content" style="display:none;">
+        <div class="card">
+            <h3 style="font-size:1rem;margin-bottom:15px;">Thiết lập Thời khóa biểu</h3>
+            <div style="display:flex;gap:10px;margin-bottom:15px;">
+                <select id="class-select" style="padding:8px;flex:1;border-radius:4px;border:1px solid #ccc;">
+                    <option value="">-- Chọn Lớp Học Phần --</option>
+                    {% for c in classes %}
+                    <option value="{{ c[0] }}">[{{ c[2] or '' }}] {{ c[1] }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-primary" id="btn-view-schedule">Xem / Sửa TKB</button>
+            </div>
+            <div id="schedule-editor" style="display:none;background:#f9f9f9;padding:15px;border-radius:8px;border:1px solid #eee;">
+                <h4 style="margin-top:0;">Thêm ca học</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;margin-bottom:15px;">
+                    <select id="sch-weekday" style="padding:6px;">
+                        <option value="2">Thứ 2</option>
+                        <option value="3">Thứ 3</option>
+                        <option value="4">Thứ 4</option>
+                        <option value="5">Thứ 5</option>
+                        <option value="6">Thứ 6</option>
+                        <option value="7">Thứ 7</option>
+                        <option value="8">Chủ Nhật</option>
+                    </select>
+                    <select id="sch-start-period" style="padding:6px;">
+                        <option value="">-- Tiết BĐ --</option>
+                        {% for p in periods %}
+                        <option value="{{ p.id }}">{{ p.name }} ({{ p.start_time }})</option>
+                        {% endfor %}
+                    </select>
+                    <input type="number" id="sch-num-periods" min="1" max="5" value="2" style="padding:6px;" placeholder="Số tiết">
+                    <select id="sch-room" style="padding:6px;">
+                        <option value="">-- Phòng --</option>
+                        {% for r in rooms %}
+                        <option value="{{ r['id'] }}">{{ r['name'] }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-success" id="btn-add-sch-row">Thêm</button>
+                </div>
+                <table style="width:100%;margin-bottom:15px;background:white;">
+                    <thead><tr><th>Thứ</th><th>Tiết BĐ</th><th>Số tiết</th><th>Phòng</th><th>#</th></tr></thead>
+                    <tbody id="schedule-tbody"></tbody>
+                </table>
+                <button class="btn btn-primary" style="width:100%;" id="btn-save-schedules">💾 Lưu TKB & Sinh Phiên học</button>
+            </div>
+        </div>
     </div>
+</div>
+
+<!-- MODALS -->
+<div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:white;padding:30px;border-radius:12px;min-width:360px;max-width:500px;width:90%;">
+        <h3 id="modal-title" style="margin-top:0;margin-bottom:20px;border-bottom:1px solid #eee;padding-bottom:10px;"></h3>
+        <div id="modal-body"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+            <button class="btn" style="background:#ddd;color:#333;" id="btn-modal-cancel">Hủy</button>
+            <button class="btn btn-primary" id="btn-modal-save">Lưu</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Data for JS -->
+<div style="display:none;">
+    <span id="data-depts-names">{{ depts|map(attribute='name')|list|tojson|safe }}</span>
+    <span id="data-depts-ids">{{ depts|map(attribute='id')|list|tojson|safe }}</span>
+    <span id="data-majors-names">{{ majors|map(attribute='name')|list|tojson|safe }}</span>
+    <span id="data-majors-ids">{{ majors|map(attribute='id')|list|tojson|safe }}</span>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    function exportStudents() {
-        window.location.href = "{{ url_for('admin.export_students') }}";
-    }
-
-    function importStudents() {
-        const fileInput = document.getElementById('import-file');
-        if (fileInput.files.length === 0) {
-            alert("Vui lòng chọn file CSV!");
-            return;
-        }
-        
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        
-        fetch('/admin/import/students', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            alert(data.message);
-            if (data.status === 'success') location.reload();
-        })
-        .catch(err => alert("Lỗi kết nối!"));
-    }
-</script>
+<script src="{{ url_for('static', filename='js/academic.js') }}"></script>
 {% endblock %}
