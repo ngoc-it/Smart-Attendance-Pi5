@@ -24,6 +24,8 @@
 .status-badge.in { background: #e6f4ea; color: #1e7e34; }
 .status-badge.out { background: #fdf2f2; color: #9b1c1c; }
 .status-badge.registered { background: #f0f7ff; color: #0056b3; }
+.status-badge.excused { background: #fffbeb; color: #d97706; border: 1px solid #fcd34d; }
+.status-badge.unexcused { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 
 .search-bar {
     margin-bottom: 15px;
@@ -103,6 +105,20 @@
 }
 .btn-out:hover { background: #fee2e2 !important; }
 
+.btn-excused {
+    color: #d97706 !important;
+    border: 1px solid #f59e0b !important;
+    background: #fffbeb !important;
+}
+.btn-excused:hover { background: #fef3c7 !important; }
+
+.btn-unexcused {
+    color: #991b1b !important;
+    border: 1px solid #ef4444 !important;
+    background: #fef2f2 !important;
+}
+.btn-unexcused:hover { background: #fee2e2 !important; }
+
 /* Nút Xóa toàn bộ SV */
 .btn-action-danger {
     padding: 6px 12px;
@@ -144,4 +160,76 @@
     background: #fee2e2;
     border-color: #fecaca;
     color: #dc2626;
+}
+
+/* === CLASS HUB (GRID) === */
+.class-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
+    margin-top: 10px;
+}
+
+.class-card {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid #f1f5f9;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 180px;
+}
+
+.class-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: #3182ce;
+}
+
+.class-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background: linear-gradient(to bottom, #3182ce, #63b3ed);
+}
+
+.class-card h4 {
+    margin: 0 0 8px 0;
+    font-size: 1.25rem;
+    color: #1e293b;
+    line-height: 1.2;
+}
+
+.class-card .class-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: #64748b;
+    background: #f8fafc;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.class-card .class-stats {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.class-card .class-stats i {
+    margin-right: 6px;
+    color: #94a3b8;
 }

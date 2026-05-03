@@ -25,6 +25,25 @@ c.execute('''CREATE TABLE IF NOT EXISTS device_payloads
      date TEXT, trigger_start TEXT, trigger_end TEXT, status TEXT DEFAULT 'PENDING')''')
 print("✓ device_payloads table")
 
+# Alter courses
+cursor = c.execute("PRAGMA table_info(courses)")
+course_cols = [col[1] for col in cursor.fetchall()]
+for col, ctype in [('code','TEXT'),('credits','INTEGER'),('lt_credits','INTEGER'),
+                   ('th_credits','INTEGER'),('total_periods','INTEGER'),('is_mandatory','INTEGER DEFAULT 1')]:
+    if col not in course_cols:
+        try:
+            c.execute(f'ALTER TABLE courses ADD COLUMN {col} {ctype}')
+            print(f"✓ courses.{col}")
+        except Exception as e:
+            print(f"  courses.{col}: {e}")
+
+# Add unique index for code
+try:
+    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_course_code ON courses(code)')
+    print("✓ idx_course_code")
+except Exception as e:
+    print(f"  idx_course_code: {e}")
+
 # Alter schedules
 for col, ctype in [('start_period_id','INTEGER'),('num_periods','INTEGER'),('room_id','INTEGER')]:
     try:
@@ -42,15 +61,15 @@ except Exception as e:
 
 # Seed periods
 periods = [
-    (1,'Tiết 1','07:30','08:20'),(2,'Tiết 2','08:20','09:10'),
-    (3,'Tiết 3','09:20','10:10'),(4,'Tiết 4','10:10','11:00'),
-    (5,'Tiết 5','11:00','11:50'),(6,'Tiết 6','13:00','13:50'),
-    (7,'Tiết 7','13:50','14:40'),(8,'Tiết 8','14:50','15:40'),
-    (9,'Tiết 9','15:40','16:30'),(10,'Tiết 10','16:30','17:20'),
-    (11,'Tiết 11','18:00','18:50'),(12,'Tiết 12','18:50','19:40')
+    (1, 'Tiết 1', '07:30', '08:20'), (2, 'Tiết 2', '08:20', '09:10'),
+    (3, 'Tiết 3', '09:20', '10:10'), (4, 'Tiết 4', '10:10', '11:00'),
+    (5, 'Tiết 5', '13:30', '14:20'), (6, 'Tiết 6', '14:20', '15:10'),
+    (7, 'Tiết 7', '15:20', '16:10'), (8, 'Tiết 8', '16:10', '17:00'),
+    (9, 'Tiết 9', '18:20', '19:10'), (10, 'Tiết 10', '19:10', '20:00')
 ]
 for p in periods:
-    c.execute('INSERT OR IGNORE INTO periods (id,name,start_time,end_time) VALUES (?,?,?,?)', p)
+    c.execute('INSERT OR REPLACE INTO periods (id,name,start_time,end_time) VALUES (?,?,?,?)', p)
+c.execute('DELETE FROM periods WHERE id > 10')
 count = c.execute('SELECT count(*) FROM periods').fetchone()[0]
 print(f"✓ periods seeded: {count} records")
 

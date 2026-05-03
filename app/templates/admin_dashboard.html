@@ -62,24 +62,39 @@
         <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
                 <h3 style="font-size:1rem;margin:0;">Danh sách Lớp học phần</h3>
-                <button class="btn btn-primary btn-add" data-type="class">+ Thêm Lớp</button>
+                <div style="display:flex;gap:6px;">
+                    <label class="btn btn-success btn-sm" style="cursor:pointer;margin:0;">
+                        📂 Excel<input type="file" accept=".xlsx" style="display:none;" class="import-excel" data-type="classes">
+                    </label>
+                    <button class="btn btn-primary btn-add" data-type="class">+ Thêm Lớp</button>
+                </div>
             </div>
             <table>
                 <thead>
-                    <tr><th>Tên lớp</th><th>Mã lớp</th><th>Sĩ số</th><th></th></tr>
+                    <tr><th>Tên lớp</th><th>Mã lớp</th><th>Học phần</th><th>Sĩ số</th><th>Giảng viên</th><th></th></tr>
                 </thead>
                 <tbody>
                     {% for cls in classes %}
                     <tr>
                         <td><strong>{{ cls.name }}</strong></td>
                         <td><code>{{ cls.code or '-' }}</code></td>
+                        <td><small>{{ cls.course_name or '-' }}</small></td>
                         <td>
                             <button class="btn-view-students-styled btn-view-students" data-id="{{ cls.id }}" data-name="{{ cls.name }}">
                                 👥 {{ cls.student_count }} SV
                             </button>
                         </td>
+                        <td>
+                            <button class="btn-view-students-styled btn-assign-lecturer" data-id="{{ cls.id }}" data-name="{{ cls.name }}">
+                                👨‍🏫 Phân công
+                            </button>
+                        </td>
                         <td style="white-space:nowrap;">
-                            <button class="action-icon-btn btn-edit-cls" data-id="{{ cls.id }}" data-name="{{ cls.name }}" data-code="{{ cls.code or '' }}">✏️</button>
+                            <button class="action-icon-btn btn-edit-cls" 
+                                    data-id="{{ cls.id }}" 
+                                    data-name="{{ cls.name }}" 
+                                    data-code="{{ cls.code or '' }}"
+                                    data-course="{{ cls.course_id or 0 }}">✏️</button>
                             <button class="action-icon-btn delete btn-del-cls" data-id="{{ cls.id }}">🗑</button>
                         </td>
                     </tr>
@@ -160,24 +175,84 @@
     <div id="tab-course" class="tab-content" style="display:none;">
         <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <h3 style="font-size:1rem;color:var(--warning);margin:0;">Danh mục Học phần</h3>
+                <h3 style="font-size:1rem;color:var(--warning);margin:0;">Danh mục Học phần (Hệ thống Tín chỉ)</h3>
                 <div style="display:flex;gap:6px;">
-                    <label class="btn btn-success btn-sm" style="cursor:pointer;margin:0;">
-                        📂 Excel<input type="file" accept=".xlsx" style="display:none;" class="import-excel" data-type="courses">
-                    </label>
+                    <button class="btn btn-success btn-sm" id="btn-import-curriculum">📥 Nhập CT Đào tạo (Excel)</button>
                     <button class="btn btn-primary btn-sm btn-add" data-type="course">+ Thêm Học phần</button>
                 </div>
             </div>
+
+            <!-- Filters -->
+            <div style="display:flex;gap:10px;margin-bottom:15px;background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;">
+                <div style="flex:1;">
+                    <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Lọc theo Ngành:</label>
+                    <select id="filter-course-major" class="form-control" style="width:100%;font-size:0.85rem;height:32px;padding:0 8px;">
+                        <option value="">-- Tất cả ngành --</option>
+                        {% for m in majors %}
+                        <option value="{{ m.id }}">{{ m.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Lọc theo Khối kiến thức:</label>
+                    <select id="filter-course-category" class="form-control" style="width:100%;font-size:0.85rem;height:32px;padding:0 8px;">
+                        <option value="">-- Tất cả khối --</option>
+                        <option value="Đại cương">Kiến thức đại cương</option>
+                        <option value="Cơ sở ngành">Kiến thức cơ sở ngành</option>
+                        <option value="Chuyên ngành">Kiến thức chuyên ngành</option>
+                        <option value="Tốt nghiệp">Kiến thức tốt nghiệp</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Import Area -->
+            <div id="import-area" style="display:none;background:#f0f7ff;padding:15px;border-radius:8px;margin-bottom:15px;border:1px dashed #007bff;">
+                <h4 style="margin:0 0 10px 0;color:#0056b3;">Import Chương trình đào tạo</h4>
+                <p style="font-size:0.85rem;margin-bottom:10px;">Chọn file Excel (.xlsx) có cấu trúc 3 khối song song (Kiến thức đại cương, Cơ sở ngành, Chuyên ngành).</p>
+                <div style="display:flex;gap:10px;">
+                    <input type="file" id="curriculum-file" accept=".xlsx, .xls" style="flex:1;padding:5px;background:white;border:1px solid #ccc;border-radius:4px;">
+                    <button class="btn btn-primary btn-sm" id="btn-do-import">Tải lên & Xử lý</button>
+                    <button class="btn btn-sm" id="btn-cancel-import" style="background:#666;color:white;">Hủy</button>
+                </div>
+            </div>
+
             <table>
-                <thead><tr><th>Tên Học phần</th><th>Ngành</th><th></th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Mã HP</th>
+                        <th>Tên học phần</th>
+                        <th>Khối kiến thức</th>
+                        <th>Ngành</th>
+                        <th>Tín chỉ (LT,TH)</th>
+                        <th>Tổng tiết</th>
+                        <th></th>
+                    </tr>
+                </thead>
                 <tbody>
                     {% for c in courses %}
-                    <tr>
-                        <td>{{ c['name'] }}</td>
-                        <td><small>{{ c['major_name'] or '-' }}</small></td>
+                    <tr class="course-row" data-major="{{ c.major_id or '' }}" data-category="{{ c.category or '' }}">
+                        <td><code>{{ c.code or '-' }}</code></td>
+                        <td><strong>{{ c.name }}</strong></td>
+                        <td>
+                            <span class="badge-category" data-cat="{{ c.category }}">
+                                {{ c.category or 'Chưa phân loại' }}
+                            </span>
+                        </td>
+                        <td><small>{{ c.major_name or 'Dùng chung' }}</small></td>
+                        <td>{{ c.credits }} ({{ c.lt_credits or 0 }}, {{ c.th_credits or 0 }})</td>
+                        <td>{{ c.total_periods or 0 }}</td>
                         <td style="white-space:nowrap;">
-                            <button class="action-icon-btn btn-edit-course" data-id="{{ c['id'] }}" data-name="{{ c['name'] }}" data-major="{{ c['major_id'] or 0 }}">✏️</button>
-                            <button class="action-icon-btn delete btn-del-course" data-id="{{ c['id'] }}">🗑</button>
+                            <button class="action-icon-btn btn-edit-course" 
+                                    data-id="{{ c.id }}" 
+                                    data-name="{{ c.name }}" 
+                                    data-code="{{ c.code or '' }}"
+                                    data-credits="{{ c.credits }}"
+                                    data-lt="{{ c.lt_credits or 0 }}"
+                                    data-th="{{ c.th_credits or 0 }}"
+                                    data-periods="{{ c.total_periods or 0 }}"
+                                    data-cat="{{ c.category or '' }}"
+                                    data-major="{{ c.major_id or 0 }}">✏️</button>
+                            <button class="action-icon-btn delete btn-del-course" data-id="{{ c.id }}">🗑</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -205,6 +280,11 @@
     <span id="data-depts-ids">{{ depts|map(attribute='id')|list|tojson|safe }}</span>
     <span id="data-majors-names">{{ majors|map(attribute='name')|list|tojson|safe }}</span>
     <span id="data-majors-ids">{{ majors|map(attribute='id')|list|tojson|safe }}</span>
+    <span id="data-courses-names">{{ courses|map(attribute='name')|list|tojson|safe }}</span>
+    <span id="data-courses-ids">{{ courses|map(attribute='id')|list|tojson|safe }}</span>
+    <span id="data-courses-codes">{{ courses|map(attribute='code')|list|tojson|safe }}</span>
+    <span id="data-lecturers-names">{{ lecturers|map(attribute='name')|list|tojson|safe }}</span>
+    <span id="data-lecturers-ids">{{ lecturers|map(attribute='id')|list|tojson|safe }}</span>
 </div>
 {% endblock %}
 

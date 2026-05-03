@@ -1,4 +1,4 @@
-[0;93m2026-04-27 00:32:58.710695721 [W:onnxruntime:Default, device_discovery.cc:325 DiscoverDevicesForPlatform] GPU device discovery failed: device_discovery.cc:92 ReadFileContents Failed to open file: "/sys/class/drm/card1/device/vendor"[m
+[0;93m2026-05-01 21:44:57.060859683 [W:onnxruntime:Default, device_discovery.cc:325 DiscoverDevicesForPlatform] GPU device discovery failed: device_discovery.cc:92 ReadFileContents Failed to open file: "/sys/class/drm/card1/device/vendor"[m
 Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
 model ignore: /home/nkn0901/.insightface/models/buffalo_l/1k3d68.onnx landmark_3d_68
 Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
@@ -15,28 +15,27 @@ set det-size: (640, 640)
 [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:5000
- * Running on http://192.168.1.47:5000
+ * Running on http://192.168.137.98:5000
 [33mPress CTRL+C to quit[0m
-[0:05:44.354474451] [4691]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
-[0:05:44.363733247] [4802]  INFO RPI pisp.cpp:720 libpisp version v1.4.0 23-03-2026 (13:29:05)
-[0:05:44.364532652] [4802]  WARN CameraSensorProperties camera_sensor_properties.cpp:548 No static properties available for 'imx708_wide'
-[0:05:44.364552745] [4802]  WARN CameraSensorProperties camera_sensor_properties.cpp:550 Please consider updating the camera sensor properties database
-[0:05:44.374178725] [4802]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/pisp/imx708_wide.json
-[0:05:44.382573912] [4802]  WARN CameraSensor camera_sensor_legacy.cpp:502 'imx708_wide': No sensor delays found in static properties. Assuming unverified defaults.
-[0:05:44.382979967] [4802]  INFO Camera camera_manager.cpp:223 Adding camera '/base/axi/pcie@1000120000/rp1/i2c@80000/imx708@1a' for pipeline handler rpi/pisp
-[0:05:44.382993430] [4802]  INFO RPI pisp.cpp:1181 Registered camera /base/axi/pcie@1000120000/rp1/i2c@80000/imx708@1a to CFE device /dev/media1 and ISP device /dev/media0 using PiSP variant BCM2712_D0
-[0:05:44.413892941] [4805]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-RGB888/Rec709/Rec709/None/Full
-[0:05:44.414153496] [4802]  INFO RPI pisp.cpp:1485 Sensor: /base/axi/pcie@1000120000/rp1/i2c@80000/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected CFE format: 1536x864-PC1B/RAW
-[ WARN:0@21.463] global cap_gstreamer.cpp:1754 open OpenCV | GStreamer warning: unable to query duration of stream
-[ WARN:0@21.463] global cap_gstreamer.cpp:1777 open OpenCV | GStreamer warning: Cannot query video position: status=0, value=-1, duration=-1
-127.0.0.1 - - [27/Apr/2026 00:33:31] "GET /kiosk HTTP/1.1" 200 -
-127.0.0.1 - - [27/Apr/2026 00:33:31] "GET /static/css/kiosk.css HTTP/1.1" 200 -
-127.0.0.1 - - [27/Apr/2026 00:33:31] "GET /kiosk HTTP/1.1" 200 -
-127.0.0.1 - - [27/Apr/2026 00:33:31] "GET /kiosk HTTP/1.1" 200 -
-127.0.0.1 - - [27/Apr/2026 00:33:31] "[36mGET /static/css/kiosk.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [27/Apr/2026 00:33:31] "[36mGET /static/css/kiosk.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [27/Apr/2026 00:33:31] "GET /video_feed?t=1777224811495 HTTP/1.1" 200 -
-127.0.0.1 - - [27/Apr/2026 00:33:31] "GET /video_feed?t=1777224811432 HTTP/1.1" 200 -
-127.0.0.1 - - [27/Apr/2026 00:33:31] "GET /video_feed?t=1777224811432 HTTP/1.1" 200 -
-127.0.0.1 - - [27/Apr/2026 00:33:31] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
-127.0.0.1 - - [27/Apr/2026 00:33:31] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [01/May/2026 21:45:10] "GET /kiosk HTTP/1.1" 200 -
+127.0.0.1 - - [01/May/2026 21:45:10] "GET /static/css/kiosk.css HTTP/1.1" 200 -
+127.0.0.1 - - [01/May/2026 21:45:11] "GET /video_feed?t=1777646711073 HTTP/1.1" 200 -
+127.0.0.1 - - [01/May/2026 21:45:11] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[0:08:32.835526897] [4757]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[0:08:32.845813546] [4883]  INFO RPI pisp.cpp:720 libpisp version v1.4.0 23-03-2026 (13:29:05)
+[0:08:32.846683415] [4883]  WARN CameraSensorProperties camera_sensor_properties.cpp:548 No static properties available for 'imx708_wide'
+[0:08:32.846701896] [4883]  WARN CameraSensorProperties camera_sensor_properties.cpp:550 Please consider updating the camera sensor properties database
+[0:08:32.858850505] [4883]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/pisp/imx708_wide.json
+[0:08:32.867438361] [4883]  WARN CameraSensor camera_sensor_legacy.cpp:502 'imx708_wide': No sensor delays found in static properties. Assuming unverified defaults.
+[0:08:32.867872619] [4883]  INFO Camera camera_manager.cpp:223 Adding camera '/base/axi/pcie@1000120000/rp1/i2c@80000/imx708@1a' for pipeline handler rpi/pisp
+[0:08:32.867891768] [4883]  INFO RPI pisp.cpp:1181 Registered camera /base/axi/pcie@1000120000/rp1/i2c@80000/imx708@1a to CFE device /dev/media3 and ISP device /dev/media1 using PiSP variant BCM2712_D0
+[0:08:32.902201154] [4886]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-RGB888/Rec709/Rec709/None/Full
+[0:08:32.902459153] [4883]  INFO RPI pisp.cpp:1485 Sensor: /base/axi/pcie@1000120000/rp1/i2c@80000/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected CFE format: 1536x864-PC1B/RAW
+[ WARN:0@24.134] global cap_gstreamer.cpp:1754 open OpenCV | GStreamer warning: unable to query duration of stream
+[ WARN:0@24.135] global cap_gstreamer.cpp:1777 open OpenCV | GStreamer warning: Cannot query video position: status=0, value=-1, duration=-1
+127.0.0.1 - - [01/May/2026 21:46:39] "[32mGET / HTTP/1.1[0m" 302 -
+127.0.0.1 - - [01/May/2026 21:46:39] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [01/May/2026 21:46:40] "GET /static/css/auth.css HTTP/1.1" 200 -
+127.0.0.1 - - [01/May/2026 21:46:40] "GET /static/images/mtu_logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [01/May/2026 21:46:40] "GET /static/images/mtu_bg.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [01/May/2026 21:46:40] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -

@@ -19,7 +19,21 @@
                 </option>
                 {% endfor %}
             </select>
-            <button onclick="exportExcel()" class="btn-export">📥 Xuất Excel</button>
+            <button onclick="exportExcel()" class="btn-export">📥 Xuất ngày</button>
+        </div>
+    </div>
+
+    <!-- Hộp công cụ Xuất Tổng kết -->
+    <div class="admin-header-row" style="margin-bottom: 24px; padding: 15px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <span style="font-weight: 600; color: var(--primary);">Báo cáo tổng kết:</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <label style="font-size: 0.8rem; color: #64748b;">Từ:</label>
+                <input type="date" id="summary_start" class="form-control" style="width: 150px;">
+                <label style="font-size: 0.8rem; color: #64748b;">Đến:</label>
+                <input type="date" id="summary_end" class="form-control" style="width: 150px;">
+            </div>
+            <button onclick="exportSummaryExcel()" class="btn-export" style="background: var(--primary); margin-left: auto;">📊 Xuất File Tổng Hợp</button>
         </div>
     </div>
 
@@ -36,8 +50,12 @@
                 <div class="stat-value" style="color: var(--success);">{{ stats.present }}</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Vắng mặt</div>
-                <div class="stat-value" style="color: var(--danger);">{{ stats.absent }}</div>
+                <div class="stat-label">Vắng (Có phép)</div>
+                <div class="stat-value" style="color: var(--warning);">{{ stats.excused or 0 }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Vắng (K.Phép)</div>
+                <div class="stat-value" style="color: var(--danger);">{{ stats.unexcused or 0 }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Tỉ lệ tham gia</div>
@@ -72,7 +90,7 @@
                         <td>{{ r.in_time or '-' }}</td>
                         <td>{{ r.out_time or '-' }}</td>
                         <td>
-                            <span class="status-badge {{ r.status|replace(' ', '-')|lower }}">
+                            <span class="status-badge {{ r.status|lower|replace(' ', '-')|replace('(', '')|replace(')', '') }}">
                                 {{ r.status }}
                             </span>
                         </td>

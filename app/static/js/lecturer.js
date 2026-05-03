@@ -1,12 +1,10 @@
-/* === LECTURER DASHBOARD LOGIC === */
+/* === LECTURER DASHBOARD LOGIC (OPTION B) === */
 
-function filterByClass() {
-    const classId = document.getElementById('filter_class').value;
-    window.location.href = `/?class_id=${classId}`;
-}
+let currentStudentId = null;
 
 function filterTable() {
     const input = document.getElementById("searchInput");
+    if (!input) return;
     const filter = input.value.toUpperCase();
     const table = document.getElementById("studentTable");
     const tr = table.getElementsByTagName("tr");
@@ -26,60 +24,74 @@ function filterTable() {
     }
 }
 
-function updateStatus(studentId, action) {
-    fetch('/attendance/action', {
+function openActionModal(studentId, studentName) {
+    currentStudentId = studentId;
+    const classId = document.getElementById('meta-data').dataset.classId;
+    
+    document.getElementById('modal-student-name').innerText = studentName;
+    const sessionSelect = document.getElementById('modal-session');
+    sessionSelect.innerHTML = '<option>Đang tải...</option>';
+    
+    // Fetch sessions within last 7 days
+    fetch(`/api/attendance/sessions/${classId}`)
+    .then(res => res.json())
+    .then(sessions => {
+        if (sessions.length === 0) {
+            sessionSelect.innerHTML = '<option value="">Không tìm thấy buổi học trong 7 ngày qua</option>';
+        } else {
+            sessionSelect.innerHTML = sessions.map(s => `
+                <option value="${s.session_date}">${s.session_date} (${s.start_time} - ${s.end_time})</option>
+            `).join('');
+        }
+    });
+
+    document.getElementById('action-modal').style.display = 'flex';
+}
+
+function closeActionModal() {
+    document.getElementById('action-modal').style.display = 'none';
+}
+
+function submitManualAction() {
+    const date = document.getElementById('modal-session').value;
+    const action = document.getElementById('modal-action').value;
+    const reason = document.getElementById('modal-reason').value;
+    
+    if (!date) {
+        alert("Vui lòng chọn buổi học!");
+        return;
+    }
+
+    fetch('/api/attendance/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: studentId, action: action })
+        body: JSON.stringify({ 
+            id: currentStudentId, 
+            action: action, 
+            date: date,
+            reason: reason 
+        })
     })
-    .then(response => response.json())
+    .then(res => res.json())
     .then(data => {
         if (data.status === 'success') {
             location.reload();
         } else {
             alert("Lỗi: " + data.message);
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert("Lỗi kết nối server!");
     });
 }
 
-function clearClassStudents() {
-    const dataContainer = document.getElementById('meta-data');
-    const classId = dataContainer.dataset.classId;
-    
-    if (!classId) return;
-    if (confirm("Bạn có chắc chắn muốn xóa TOÀN BỘ sinh viên khỏi lớp này không? Hành động này không thể hoàn tác!")) {
-        fetch('/api/enroll/clear_class', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ class_id: classId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            alert(data.message);
-            if (data.status === 'success') location.reload();
-        });
-    }
-}
-
 function handleExcelUpload() {
-    const dataContainer = document.getElementById('meta-data');
-    const classId = dataContainer.dataset.classId;
+    const classId = document.getElementById('meta-data').dataset.classId;
     const fileInput = document.getElementById('excel-file');
-    
     if (!fileInput.files.length) return;
     
     const formData = new FormData();
     formData.append('file', fileInput.files[0]);
     formData.append('class_id', classId);
 
-    fetch('/api/enroll/import', {
-        method: 'POST',
-        body: formData
-    })
+    fetch('/api/enroll/import', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(data => {
         alert(data.message);
@@ -88,13 +100,28 @@ function handleExcelUpload() {
     .catch(err => alert("Lỗi tải lên!"));
 }
 
-// Auto-refresh camera feed timestamp
+// Clock & Initializers
 document.addEventListener('DOMContentLoaded', function() {
+    // Clock
+    const clock = document.getElementById('clock');
+    if (clock) {
+        setInterval(() => {
+            clock.innerText = new Date().toLocaleTimeString('vi-VN');
+        }, 1000);
+    }
+
+    // Video Feed Auto-refresh
     const videoFeed = document.getElementById('video-feed-img');
     if (videoFeed) {
         setInterval(() => {
             const currentSrc = videoFeed.src.split('?')[0];
             videoFeed.src = currentSrc + "?t=" + new Date().getTime();
-        }, 5000); // Refresh every 5s to ensure connection
+        }, 5000);
+    }
+
+    // Modal click-outside
+    const modal = document.getElementById('action-modal');
+    if (modal) {
+        modal.onclick = (e) => { if (e.target === modal) closeActionModal(); };
     }
 });

@@ -73,7 +73,7 @@ def update_lecturer(user_id):
 @admin_required
 def add_class():
     data = request.json
-    success = db.create_class(data['name'], data.get('code'))
+    success = db.create_class(data['name'], data.get('code'), data.get('course_id'))
     if success:
         return jsonify({"status": "success", "message": "Thêm lớp học thành công"})
     return jsonify({"status": "error", "message": "Lớp học đã tồn tại"}), 400
@@ -94,7 +94,7 @@ def delete_class(class_id):
 @admin_required
 def update_class(class_id):
     data = request.json
-    success = db.update_class(class_id, data['name'], data.get('code'))
+    success = db.update_class(class_id, data['name'], data.get('code'), data.get('course_id'))
     if success:
         return jsonify({"status": "success", "message": "Cập nhật lớp học thành công"})
     return jsonify({"status": "error", "message": "Lỗi cập nhật lớp học"}), 400
@@ -196,3 +196,32 @@ def import_students():
         return jsonify({"status": "success", "message": f"Đã nhập thành công {count} sinh viên."})
     except Exception as e:
         return jsonify({"status": "error", "message": f"Lỗi: {str(e)}"}), 500
+
+@admin_bp.route('/import/classes', methods=['POST'])
+@admin_required
+def import_classes():
+    from app.utils.excel_parser import parse_classes_excel
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "Không tìm thấy file"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"status": "error", "message": "Chưa chọn file"}), 400
+    
+    # Save file temporarily
+    upload_dir = 'data/uploads'
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, file.filename)
+    file.save(file_path)
+    
+    try:
+        classes_data = parse_classes_excel(file_path)
+        if not classes_data:
+            return jsonify({"status": "error", "message": "Không tìm thấy dữ liệu lớp học hợp lệ trong file"}), 400
+        
+        count = db.import_classes(classes_data)
+        return jsonify({"status": "success", "message": f"Đã nhập/cập nhật {count} lớp học phần"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Lỗi xử lý: {str(e)}"}), 500
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)

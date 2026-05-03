@@ -76,3 +76,32 @@
     border-color: var(--primary);
     box-shadow: 0 2px 4px rgba(66, 153, 225, 0.15);
 }
+
+/* Category Badges */
+.badge-category {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-category[data-cat="Đại cương"] {
+    background: #e9d5ff;
+    color: #7e22ce;
+}
+
+.badge-category[data-cat="Cơ sở ngành"] {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.badge-category[data-cat="Chuyên ngành"] {
+    background: #fef9c3;
+    color: #a16207;
+}
+
+.badge-category[data-cat="Tốt nghiệp"] {
+    background: #fee2e2;
+    color: #b91c1c;
+}

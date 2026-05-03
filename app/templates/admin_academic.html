@@ -15,6 +15,7 @@
     <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid #eee;">
         <button class="tab-btn active" data-tab="tab-semester">📅 Học kỳ</button>
         <button class="tab-btn" data-tab="tab-room">🏫 Phòng học</button>
+        <button class="tab-btn" data-tab="tab-holiday">🏖 Ngày nghỉ</button>
         <button class="tab-btn" data-tab="tab-schedule">🗓 Thời khóa biểu</button>
     </div>
 
@@ -95,8 +96,12 @@
                 </select>
                 <button class="btn btn-primary" id="btn-view-schedule">Xem / Sửa TKB</button>
             </div>
+            
             <div id="schedule-editor" style="display:none;background:#f9f9f9;padding:15px;border-radius:8px;border:1px solid #eee;">
-                <h4 style="margin-top:0;">Thêm ca học</h4>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                    <h4 style="margin:0;">Thêm ca học</h4>
+                    <button class="btn btn-warning" id="btn-recalculate-sessions" title="Xóa lịch cũ và tính toán lại dựa trên số tiết đã dạy">🔄 Tính toán lại buổi học</button>
+                </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;margin-bottom:15px;">
                     <select id="sch-weekday" style="padding:6px;">
                         <option value="2">Thứ 2</option>
@@ -128,6 +133,35 @@
                 </table>
                 <button class="btn btn-primary" style="width:100%;" id="btn-save-schedules">💾 Lưu TKB & Sinh Phiên học</button>
             </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: HOLIDAYS -->
+    <div id="tab-holiday" class="tab-content" style="display:none;">
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h3 style="font-size:1rem;margin:0;">Quản lý Ngày nghỉ / Lễ</h3>
+                <button class="btn btn-primary btn-add" data-type="holiday">+ Thêm Ngày nghỉ</button>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>Tên ngày lễ</th><th>Ngày</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for h in holidays %}
+                    <tr>
+                        <td><strong>{{ h['name'] }}</strong></td>
+                        <td>{{ h['holiday_date'] }}</td>
+                        <td style="text-align:right;">
+                            <button class="btn btn-danger btn-sm btn-del-holiday" data-id="{{ h['id'] }}">🗑</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not holidays %}
+                    <tr><td colspan="3" style="text-align:center;">Chưa có ngày nghỉ nào được thiết lập</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

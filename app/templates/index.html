@@ -3,118 +3,166 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/lecturer.css') }}">
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+    .back-btn { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #4a5568; font-weight: 600; }
+    .back-btn:hover { color: var(--primary); }
+
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center;
+        z-index: 1000; backdrop-filter: blur(4px);
+    }
+    .modal-content {
+        background: white; padding: 25px; border-radius: 16px; width: 100%; max-width: 450px;
+        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+    }
+    .timetable-section { margin-top: 40px; padding-top: 20px; border-top: 2px solid #f1f5f9; }
+    .status-btn-group { display: flex; gap: 5px; }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-container">
-    <section class="control-section">
-        <!-- Cột trái: Camera Live Feed -->
-        <div class="card" style="height: 100%;">
-            <h3 style="font-size: 1rem; color: var(--primary); margin-top: 0;">Live AI Camera Feed</h3>
-            <div style="background: #000; border-radius: 8px; overflow: hidden; position: relative; aspect-ratio: 4/3;">
-                <img id="video-feed-img" src="{{ url_for('attendance.video_feed') }}"
-                    style="width: 100%; height: 100%; object-fit: cover;">
-            </div>
+    {% if not selected_class_id %}
+    <!-- HUB VIEW: Class Selection & Global Timetable -->
+    <div class="dashboard-header">
+        <div>
+            <h2 style="margin:0; color: var(--dark);">Chào mừng trở lại, Giảng viên</h2>
+            <p style="color: #666; margin: 5px 0 0 0;">Quản lý lớp học và theo dõi lịch dạy</p>
+        </div>
+        <div style="text-align: right;">
+            <div id="clock" style="font-size: 1.2rem; font-weight: bold; color: var(--primary);">00:00:00</div>
+            <div style="font-size: 0.8rem; color: #888;">{{ now_date }}</div>
+        </div>
+    </div>
 
-            <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
-                <h4 style="font-size: 0.9rem; color: var(--success); margin-bottom: 10px;">Lịch dạy của bạn</h4>
-                <table style="font-size: 0.8rem; width: 100%;">
-                    <thead>
-                        <tr>
-                            <th>THỨ</th>
-                            <th>GIỜ</th>
-                            <th>LỚP</th>
-                            <th>PHÒNG</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for sch in schedule %}
-                        <tr>
-                            <td><strong>{{ ['','','CN','T2','T3','T4','T5','T6','T7','T8'][sch.weekday] if sch.weekday <
-                                        10 else sch.weekday }}</strong>
-                            </td>
-                            <td><small>{{ sch.start_time }} - {{ sch.end_time }}</small></td>
-                            <td>{{ sch.class_name }}</td>
-                            <td><code>{{ sch.room_name }}</code></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <div class="class-grid">
+        {% for cls in classes %}
+        <a href="?class_id={{ cls[0] }}" class="class-card" style="text-decoration: none; color: inherit;">
+            <div>
+                <h4>{{ cls[1] }}</h4>
+                <span class="class-code">{{ cls[2] or 'N/A' }}</span>
+                <p style="font-size: 0.85rem; color: #4a5568; margin: 10px 0;">
+                    <i class="fas fa-book"></i> {{ cls[4] or 'Chưa gắn HP' }}
+                </p>
+            </div>
+            <div class="class-stats">
+                <span><i class="fas fa-users"></i> {{ cls[5] }} SV</span>
+                <span style="margin-left: auto; color: var(--primary); font-weight: 600;">Vào lớp &rarr;</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Lịch dạy tổng quát -->
+    <div class="timetable-section">
+        <h3 style="margin-bottom: 20px; font-size: 1.1rem;"><i class="fas fa-calendar-alt"></i> Lịch dạy tổng quát của bạn</h3>
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead style="background: #f8fafc;">
+                    <tr>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #edf2f7;">THỨ</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #edf2f7;">GIỜ DẠY</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #edf2f7;">LỚP HỌC</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #edf2f7;">PHÒNG</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sch in schedule %}
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #f7fafc;">
+                            <strong>{{ ['','','T2','T3','T4','T5','T6','T7','CN'][sch.weekday] }}</strong>
+                        </td>
+                        <td style="padding: 12px; border-bottom: 1px solid #f7fafc;"><small>{{ sch.start_time }} - {{ sch.end_time }}</small></td>
+                        <td style="padding: 12px; border-bottom: 1px solid #f7fafc;">{{ sch.class_name }}</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #f7fafc;"><code>{{ sch.room_name }}</code></td>
+                    </tr>
+                    {% endfor %}
+                    {% if not schedule %}
+                    <tr><td colspan="4" style="padding: 20px; text-align: center; color: #888;">Chưa có lịch dạy trong hệ thống</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- DETAIL VIEW -->
+    <div class="dashboard-header">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <a href="{{ url_for('attendance.index') }}" class="back-btn"><i class="fas fa-arrow-left"></i> Hub</a>
+            <h2 style="margin:0;">
+                {% for cls in classes %}
+                    {% if cls[0] == selected_class_id %}{{ cls[1] }}{% endif %}
+                {% endfor %}
+            </h2>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('attendance.reports') }}?class_id={{ selected_class_id }}" class="btn-action-subtle" style="text-decoration: none;">📊 Báo cáo</a>
+        </div>
+    </div>
+
+    <section class="control-section">
+        <div class="card" style="height: fit-content;">
+            <h3 style="font-size: 1rem; color: var(--primary); margin-top: 0;">Live Feed</h3>
+            <div style="background: #000; border-radius: 12px; overflow: hidden; position: relative; aspect-ratio: 4/3;">
+                <img id="video-feed-img" src="{{ url_for('attendance.video_feed') }}" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            <div style="margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 10px; border: 1px solid #edf2f7;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                    <span>Sĩ số: <strong>{{ total_students }}</strong></span>
+                    <span>Ngày: <strong>{{ now_date }}</strong></span>
+                </div>
             </div>
         </div>
 
-        <!-- Cột phải: Danh sách sinh viên -->
-        <div class="card" style="height: 100%;">
+        <div class="card" style="height: 100%; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="font-size: 1rem; margin: 0;">Danh sách Sinh viên ({{ total_students }})</h3>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <select id="filter_class" onchange="filterByClass()"
-                        style="padding: 5px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.85rem;">
-                        <option value="">Tất cả lớp</option>
-                        {% for cls in classes %}
-                        <option value="{{ cls[0] }}" {% if selected_class_id==cls[0] %}selected{% endif %}>
-                            {% if cls[2] %}[{{ cls[2] }}] {% endif %}{{ cls[1] }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                    {% if selected_class_id %}
-                    <button class="btn-action-danger" onclick="clearClassStudents()">🗑️ Xóa toàn bộ SV</button>
-                    {% endif %}
-                    <input type="file" id="excel-file" accept=".xlsx" style="display: none;"
-                        onchange="handleExcelUpload()">
-                    <button class="btn-action-subtle" onclick="document.getElementById('excel-file').click()">📂
-                        <span>Import Excel</span></button>
-                </div>
+                <h3 style="font-size: 1rem; margin: 0;">Danh sách Sinh viên</h3>
+                <input type="text" id="searchInput" placeholder="Tìm tên/MSSV..." onkeyup="filterTable()" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #ddd; width: 200px;">
             </div>
 
-            <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="Tìm kiếm theo MSSV hoặc Tên..."
-                    onkeyup="filterTable()">
-            </div>
-
-            <div class="table-wrapper">
+            <div class="table-wrapper" style="flex-grow: 1; overflow-y: auto;">
                 <table id="studentTable">
                     <thead>
                         <tr>
                             <th>MSSV</th>
                             <th>HỌ TÊN</th>
-                            <th style="color:#666;">ẢNH</th>
                             <th>TRẠNG THÁI</th>
-                            <th>ĐIỂM DANH</th>
                             <th style="text-align: right;">THAO TÁC</th>
                         </tr>
                     </thead>
                     <tbody id="studentData">
                         {% for student in students %}
                         <tr id="row-{{ student[0] }}">
-                            <td>{{ student[0] }}</td>
+                            <td><small>{{ student[0] }}</small></td>
                             <td><strong>{{ student[1] }}</strong></td>
                             <td>
-                                {% if face_status[student[0]] %}
-                                <span style="color: var(--success); font-weight: bold;">✓ Đã có</span>
+                                {% set s_status = student[4]|upper %}
+                                {% if s_status == 'IN' %}
+                                    <span class="status-badge in">Có mặt</span>
+                                {% elif s_status == 'OUT' %}
+                                    <span class="status-badge out">Vắng</span>
+                                {% elif s_status == 'EXCUSED' %}
+                                    <span class="status-badge excused">Có phép</span>
+                                {% elif s_status == 'UNEXCUSED' %}
+                                    <span class="status-badge unexcused">Không phép</span>
                                 {% else %}
-                                <span style="color: var(--danger); font-size: 0.8rem;">X Chưa có ảnh</span>
+                                    <span class="status-badge">{{ student[4] }}</span>
                                 {% endif %}
                             </td>
-                            <td class="status-cell">
-                                <span class="status-badge {{ student[4]|lower }}">{{ student[4] }}</span>
-                                <br><small style="color: #7f8c8d; font-size: 0.7rem;">{{ student[5] }}</small>
-                            </td>
-                            <td>
-                                <div style="display:flex; gap:6px;">
-                                    <button onclick="updateStatus('{{ student[0] }}', 'IN')"
-                                        class="btn-action-subtle btn-in">IN</button>
-                                    <button onclick="updateStatus('{{ student[0] }}', 'OUT')"
-                                        class="btn-action-subtle btn-out">OUT</button>
-                                </div>
-                            </td>
                             <td style="text-align: right;">
-                                <div style="display:flex; justify-content: flex-end; gap:6px;">
-                                    <a href="{{ url_for('enroll.enroll_page', student_id=student[0]) }}"
-                                        class="action-icon-btn" title="Đăng ký khuôn mặt">📸</a>
-                                    <button class="action-icon-btn" title="Sửa">✏️</button>
-                                    <button class="action-icon-btn delete" title="Xóa">🗑</button>
-                                </div>
+                                <button onclick="openActionModal('{{ student[0] }}', '{{ student[1] }}')" class="btn-action-subtle" style="color: var(--primary);">
+                                    ✏️ Điểm danh
+                                </button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -122,32 +170,63 @@
                 </table>
             </div>
 
-            <!-- Phân trang -->
+            <!-- PAGINATION UI -->
             {% if pagination.total_pages > 1 %}
-            <div style="display: flex; gap: 5px; margin-top: 20px; justify-content: center; align-items: center;">
+            <div style="margin-top: 15px; display: flex; justify-content: center; gap: 5px;">
                 {% if pagination.has_prev %}
-                <a href="?page={{ pagination.current - 1 }}{% if selected_class_id %}&class_id={{ selected_class_id }}{% endif %}"
-                    class="page-link" title="Trang trước">&lt;</a>
+                <a href="?class_id={{ selected_class_id }}&page={{ pagination.current - 1 }}" class="page-link">&laquo; Trước</a>
                 {% endif %}
-
+                
                 {% for p in range(1, pagination.total_pages + 1) %}
-                <a href="?page={{ p }}{% if selected_class_id %}&class_id={{ selected_class_id }}{% endif %}"
-                    class="page-link {% if p == pagination.current %}active{% endif %}">
-                    {{ p }}
-                </a>
+                <a href="?class_id={{ selected_class_id }}&page={{ p }}" class="page-link {{ 'active' if p == pagination.current else '' }}">{{ p }}</a>
                 {% endfor %}
 
                 {% if pagination.has_next %}
-                <a href="?page={{ pagination.current + 1 }}{% if selected_class_id %}&class_id={{ selected_class_id }}{% endif %}"
-                    class="page-link" title="Trang sau">&gt;</a>
+                <a href="?class_id={{ selected_class_id }}&page={{ pagination.current + 1 }}" class="page-link">Sau &raquo;</a>
                 {% endif %}
             </div>
             {% endif %}
         </div>
     </section>
+    {% endif %}
 </div>
 
-<!-- Meta data cho JS -->
+<!-- ACTION MODAL (Combined Attendance & Leave) -->
+<div id="action-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h3 id="modal-title" style="margin-top: 0;">Điểm danh thủ công</h3>
+        <p id="modal-student-name" style="font-weight: bold; color: var(--primary); margin-bottom: 20px;"></p>
+        
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 0.85rem; margin-bottom: 5px;">Chọn buổi học (Trong 7 ngày qua)</label>
+            <select id="modal-session" class="form-control" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                <!-- Sessions loaded via JS -->
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 0.85rem; margin-bottom: 5px;">Trạng thái</label>
+            <select id="modal-action" class="form-control" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                <option value="IN">Vào học (IN)</option>
+                <option value="OUT">Ra về (OUT)</option>
+                <option value="EXCUSED">Vắng có phép (P)</option>
+                <option value="UNEXCUSED">Vắng không phép (KP)</option>
+            </select>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 0.85rem; margin-bottom: 5px;">Lý do / Ghi chú</label>
+            <textarea id="modal-reason" placeholder="Nhập ghi chú..." 
+                style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc; height: 60px; resize: none;"></textarea>
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-action-subtle" style="flex: 1;" onclick="closeActionModal()">Hủy</button>
+            <button class="btn btn-primary" style="flex: 2;" onclick="submitManualAction()">Xác nhận</button>
+        </div>
+    </div>
+</div>
+
 <div id="meta-data" data-class-id="{{ selected_class_id }}" style="display:none;"></div>
 {% endblock %}
 

@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import hashlib
 
@@ -86,8 +86,33 @@ class AttendanceDB:
                  
             # Bang courses (Học phần)
             cursor.execute('''CREATE TABLE IF NOT EXISTS courses 
-                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, major_id INTEGER,
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, code TEXT UNIQUE, 
+                 credits INTEGER, lt_credits INTEGER, th_credits INTEGER, 
+                 total_periods INTEGER, is_mandatory INTEGER DEFAULT 1, major_id INTEGER,
                  FOREIGN KEY(major_id) REFERENCES majors(id))''')
+
+            cursor.execute("PRAGMA table_info(courses)")
+            course_cols = [col[1] for col in cursor.fetchall()]
+            course_updates = [
+                ('code', 'TEXT'),
+                ('credits', 'INTEGER'),
+                ('lt_credits', 'INTEGER'),
+                ('th_credits', 'INTEGER'),
+                ('total_periods', 'INTEGER'),
+                ('is_mandatory', 'INTEGER DEFAULT 1'),
+                ('category', 'TEXT'),
+                ('major_id', 'INTEGER')
+            ]
+            for col_name, col_type in course_updates:
+                if col_name not in course_cols:
+                    try:
+                        cursor.execute(f"ALTER TABLE courses ADD COLUMN {col_name} {col_type}")
+                    except: pass
+            
+            # Index for unique code
+            try:
+                cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_course_code ON courses(code)')
+            except: pass
 
             # Bang schedules (Thời khóa biểu gốc)
             cursor.execute('''CREATE TABLE IF NOT EXISTS schedules 
@@ -120,6 +145,12 @@ class AttendanceDB:
             sess_cols = [col[1] for col in cursor.fetchall()]
             if 'room_id' not in sess_cols:
                 cursor.execute("ALTER TABLE class_sessions ADD COLUMN room_id INTEGER")
+            if 'num_periods' not in sess_cols:
+                cursor.execute("ALTER TABLE class_sessions ADD COLUMN num_periods INTEGER")
+
+            # Bang holidays
+            cursor.execute('''CREATE TABLE IF NOT EXISTS holidays 
+                (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, holiday_date TEXT UNIQUE)''')
 
             # Bang rooms (Phòng học)
             cursor.execute('''CREATE TABLE IF NOT EXISTS rooms 
@@ -176,10 +207,9 @@ class AttendanceDB:
             default_periods = [
                 (1, 'Tiết 1', '07:30', '08:20'), (2, 'Tiết 2', '08:20', '09:10'),
                 (3, 'Tiết 3', '09:20', '10:10'), (4, 'Tiết 4', '10:10', '11:00'),
-                (5, 'Tiết 5', '11:00', '11:50'), (6, 'Tiết 6', '13:00', '13:50'),
-                (7, 'Tiết 7', '13:50', '14:40'), (8, 'Tiết 8', '14:50', '15:40'),
-                (9, 'Tiết 9', '15:40', '16:30'), (10, 'Tiết 10', '16:30', '17:20'),
-                (11, 'Tiết 11', '18:00', '18:50'), (12, 'Tiết 12', '18:50', '19:40')
+                (5, 'Tiết 5', '13:30', '14:20'), (6, 'Tiết 6', '14:20', '15:10'),
+                (7, 'Tiết 7', '15:20', '16:10'), (8, 'Tiết 8', '16:10', '17:00'),
+                (9, 'Tiết 9', '18:20', '19:10'), (10, 'Tiết 10', '19:10', '20:00')
             ]
             for pid, pname, pstart, pend in default_periods:
                 cursor.execute("INSERT OR IGNORE INTO periods (id, name, start_time, end_time) VALUES (?, ?, ?, ?)", (pid, pname, pstart, pend))
@@ -256,10 +286,13 @@ class AttendanceDB:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT c.id, c.name, c.code
+                SELECT c.id, c.name, c.code, c.course_id, crs.name as course_name,
+                (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.id) as student_count
                 FROM classes c
                 JOIN user_classes uc ON c.id = uc.class_id
+                LEFT JOIN courses crs ON c.course_id = crs.id
                 WHERE uc.user_id = ?
+                ORDER BY c.name ASC
             """, (user_id,))
             return cursor.fetchall()
 
@@ -305,9 +338,10 @@ class AttendanceDB:
         with self._get_conn() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT c.id, c.name, c.code, 
+                SELECT c.id, c.name, c.code, c.course_id, crs.name as course_name,
                 (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.id) as student_count
                 FROM classes c 
+                LEFT JOIN courses crs ON c.course_id = crs.id
                 ORDER BY c.name ASC 
                 LIMIT ? OFFSET ?
             """, (per_page, offset))
@@ -329,11 +363,11 @@ class AttendanceDB:
         except sqlite3.IntegrityError:
             return False
 
-    def update_class(self, class_id, name, code):
+    def update_class(self, class_id, name, code, course_id=None):
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute("UPDATE classes SET name = ?, code = ? WHERE id = ?", (name, code, class_id))
+                cursor.execute("UPDATE classes SET name = ?, code = ?, course_id = ? WHERE id = ?", (name, code, course_id, class_id))
                 conn.commit()
                 return True
         except sqlite3.IntegrityError:
@@ -373,16 +407,26 @@ class AttendanceDB:
             """)
             return cursor.fetchall()
 
-    def get_all_courses(self):
+    def get_all_courses(self, major_id=None, category=None):
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("""
+            query = """
                 SELECT c.*, m.name as major_name 
                 FROM courses c 
-                LEFT JOIN majors m ON c.major_id = m.id 
-                ORDER BY c.name
-            """)
+                LEFT JOIN majors m ON c.major_id = m.id
+                WHERE 1=1
+            """
+            params = []
+            if major_id:
+                query += " AND c.major_id = ?"
+                params.append(major_id)
+            if category:
+                query += " AND c.category = ?"
+                params.append(category)
+                
+            query += " ORDER BY c.category ASC, c.name ASC"
+            cursor.execute(query, params)
             return cursor.fetchall()
             
     def create_department(self, name):
@@ -459,23 +503,71 @@ class AttendanceDB:
                 cursor.execute("SELECT c.*, m.name as major_name FROM courses c LEFT JOIN majors m ON c.major_id = m.id ORDER BY c.name")
             return cursor.fetchall()
 
-    def create_course(self, name, major_id):
+    def create_course(self, name, major_id, code=None, category=None, credits=0, lt_credits=0, th_credits=0, total_periods=0):
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO courses (name, major_id) VALUES (?, ?)", (name, major_id))
+                cursor.execute("""
+                    INSERT INTO courses (name, code, credits, lt_credits, th_credits, total_periods, category, major_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (name, code, credits, lt_credits, th_credits, total_periods, category, major_id))
                 conn.commit()
                 return True
-        except: return False
+        except Exception as e:
+            print(f"Error create_course: {e}")
+            return False
 
-    def update_course(self, course_id, name, major_id):
+    def import_curriculum_courses(self, courses_data):
+        count = 0
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            for c in courses_data:
+                try:
+                    # Tìm hoặc tạo Ngành (Major) nếu có major_name
+                    major_id = None
+                    if c.get('major_name'):
+                        cursor.execute("SELECT id FROM majors WHERE name = ?", (c['major_name'],))
+                        m_row = cursor.fetchone()
+                        if m_row:
+                            major_id = m_row[0]
+                        else:
+                            cursor.execute("INSERT INTO majors (name) VALUES (?)", (c['major_name'],))
+                            major_id = cursor.lastrowid
+
+                    cursor.execute("""
+                        INSERT INTO courses (name, code, credits, lt_credits, th_credits, total_periods, is_mandatory, category, major_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(code) DO UPDATE SET
+                            name = excluded.name,
+                            credits = excluded.credits,
+                            lt_credits = excluded.lt_credits,
+                            th_credits = excluded.th_credits,
+                            total_periods = excluded.total_periods,
+                            is_mandatory = excluded.is_mandatory,
+                            category = excluded.category,
+                            major_id = excluded.major_id
+                    """, (c['name'], c['code'], c['credits'], c['lt_credits'], c['th_credits'], c['total_periods'], c['is_mandatory'], c.get('category'), major_id))
+                    count += 1
+                except Exception as e:
+                    print(f"Error importing course {c['code']}: {e}")
+            conn.commit()
+        return count
+
+    def update_course(self, course_id, name, major_id, code=None, category=None, credits=0, lt_credits=0, th_credits=0, total_periods=0):
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute("UPDATE courses SET name = ?, major_id = ? WHERE id = ?", (name, major_id, course_id))
+                cursor.execute("""
+                    UPDATE courses 
+                    SET name = ?, code = ?, category = ?, major_id = ?, 
+                        credits = ?, lt_credits = ?, th_credits = ?, total_periods = ?
+                    WHERE id = ?
+                """, (name, code, category, major_id, credits, lt_credits, th_credits, total_periods, course_id))
                 conn.commit()
                 return True
-        except: return False
+        except Exception as e:
+            print(f"Error update_course: {e}")
+            return False
 
     def delete_course(self, course_id):
         try:
@@ -485,6 +577,37 @@ class AttendanceDB:
                 conn.commit()
                 return True
         except: return False
+
+    def import_classes(self, classes_data):
+        count = 0
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            for c in classes_data:
+                try:
+                    course_id = None
+                    if c.get('course_code'):
+                        cursor.execute("SELECT id FROM courses WHERE code = ?", (c['course_code'],))
+                        row = cursor.fetchone()
+                        if row: course_id = row[0]
+                    
+                    # Check if class exists by code (if provided) or name
+                    if c['code']:
+                        cursor.execute("SELECT id FROM classes WHERE code = ?", (c['code'],))
+                    else:
+                        cursor.execute("SELECT id FROM classes WHERE name = ?", (c['name'],))
+                    
+                    existing = cursor.fetchone()
+                    if existing:
+                        cursor.execute("UPDATE classes SET name = ?, course_id = ? WHERE id = ?", 
+                                       (c['name'], course_id, existing[0]))
+                    else:
+                        cursor.execute("INSERT INTO classes (name, code, course_id) VALUES (?, ?, ?)", 
+                                       (c['name'], c['code'], course_id))
+                    count += 1
+                except Exception as e:
+                    print(f"Error importing class {c['name']}: {e}")
+            conn.commit()
+        return count
 
     def delete_semester(self, sem_id):
         try:
@@ -520,7 +643,8 @@ class AttendanceDB:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT s.id, s.class_id, s.weekday, 
-                       p.start_time, p.end_time, 
+                       p.start_time, 
+                       (SELECT end_time FROM periods WHERE id = s.start_period_id + s.num_periods - 1) as end_time,
                        r.name as room_name,
                        c.name as class_name, c.code as class_code,
                        s.num_periods, p.name as period_name
@@ -713,7 +837,7 @@ class AttendanceDB:
             """, (name, dob, student_class, student_id))
             conn.commit()
 
-    def update_status(self, student_id, name, action, image_path=None): # Thụt lề 4 space
+    def update_status(self, student_id, name, action, image_path=None):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -727,6 +851,22 @@ class AttendanceDB:
             cursor.execute("INSERT INTO logs (student_id, action, time, image_path) VALUES (?, ?, ?, ?)", 
                            (student_id, action, now, image_path))
             conn.commit()
+
+    def update_attendance_manual(self, student_id, action, date_str, reason=None):
+        """Ghi nhận trạng thái điểm danh thủ công (Vắng có phép/không phép) cho ngày cụ thể"""
+        log_time = f"{date_str} 00:00:01" # 1 giây đầu ngày để phân biệt với log tự động
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # Lưu lý do vào cột image_path với tiền tố SPECIAL:
+            reason_payload = f"SPECIAL:{reason}" if reason else None
+            cursor.execute("INSERT INTO logs (student_id, action, time, image_path) VALUES (?, ?, ?, ?)", 
+                           (student_id, action, log_time, reason_payload))
+            
+            # Cập nhật status hiện tại nếu là hôm nay
+            if date_str == datetime.now().strftime("%Y-%m-%d"):
+                cursor.execute("UPDATE students SET status = ?, last_seen = ? WHERE id = ?", (action, log_time, student_id))
+            conn.commit()
+            return True
 
     def get_daily_attendance(self, date_str=None, user_id=None):
         """Lấy danh sách log điểm danh trong ngày"""
@@ -863,28 +1003,55 @@ class AttendanceDB:
                 out_image = None
                 status = "Vắng" # Mặc định
                 
-                if logs_of_student:
-                    # Tìm check-in đầu tiên và check-out cuối cùng trong ngày
+                # 1. Kiểm tra trạng thái vắng có phép/không phép trước (do GV đánh dấu)
+                excused = [l for l in logs_of_student if l['action'] == 'EXCUSED']
+                unexcused = [l for l in logs_of_student if l['action'] == 'UNEXCUSED']
+                
+                if excused:
+                    reason = ""
+                    if excused[0]['image_path'] and str(excused[0]['image_path']).startswith("SPECIAL:"):
+                        reason = f" ({excused[0]['image_path'].split(':', 1)[1]})"
+                    status = f"Vắng (Có phép){reason}"
+                elif unexcused:
+                    reason = ""
+                    if unexcused[0]['image_path'] and str(unexcused[0]['image_path']).startswith("SPECIAL:"):
+                        reason = f" ({unexcused[0]['image_path'].split(':', 1)[1]})"
+                    status = f"Vắng (Không phép){reason}"
+                elif logs_of_student:
+                    # 2. Xử lý logic vào/ra tự động
                     ins = [l for l in logs_of_student if l['action'] == 'IN']
                     outs = [l for l in logs_of_student if l['action'] == 'OUT']
                     
                     if ins:
-                        in_time = ins[0]['time'].split(" ")[1] # Giờ của lần vào đầu tiên
-                        # Tìm ảnh đầu tiên có dữ liệu trong danh sách các lần vào
+                        full_in_time = ins[0]['time']
+                        in_time = full_in_time.split(" ")[1] 
                         in_imgs = [l['image_path'] for l in ins if l['image_path']]
                         in_image = in_imgs[0] if in_imgs else None
-                        status = "Có mặt"
                         
+                        # Kiểm tra đi trễ (So với giờ bắt đầu ca học)
+                        # Lấy session của lớp trong ngày này
+                        cursor.execute("SELECT start_time FROM class_sessions WHERE class_id = ? AND session_date = ?", (class_name if str(class_name).isdigit() else 0, date_str))
+                        sess = cursor.fetchone()
+                        
+                        is_late = False
+                        if sess:
+                            try:
+                                sess_start = datetime.strptime(f"{date_str} {sess['start_time']}", "%Y-%m-%d %H:%M")
+                                actual_in = datetime.strptime(full_in_time, "%Y-%m-%d %H:%M:%S")
+                                # Lấy ngưỡng đi trễ từ settings (mặc định 15p)
+                                late_limit = int(self.get_setting("late_limit_minutes", "15"))
+                                if (actual_in - sess_start).total_seconds() > late_limit * 60:
+                                    is_late = True
+                            except: pass
+
                         if outs:
-                            out_time = outs[-1]['time'].split(" ")[1] # Giờ của lần ra cuối cùng
-                            # Tìm ảnh cuối cùng có dữ liệu trong danh sách các lần ra
+                            out_time = outs[-1]['time'].split(" ")[1]
                             out_imgs = [l['image_path'] for l in outs if l['image_path']]
                             out_image = out_imgs[-1] if out_imgs else None
-                            status = "Hoàn thành"
+                            status = "Đi trễ" if is_late else "Hoàn thành"
                         else:
-                            status = "Chưa Checkout"
+                            status = "Đi trễ" if is_late else "Chưa Checkout"
                     elif outs:
-                        # Trường hợp hi hữu: chỉ có log OUT
                         out_time = outs[-1]['time'].split(" ")[1]
                         out_imgs = [l['image_path'] for l in outs if l['image_path']]
                         out_image = out_imgs[-1] if out_imgs else None
@@ -901,6 +1068,120 @@ class AttendanceDB:
                 })
                 
             return report
+
+    def get_attendance_summary_matrix(self, class_id, start_date=None, end_date=None):
+        """Lấy dữ liệu ma trận điểm danh tổng hợp của lớp học trong khoảng thời gian"""
+        with self._get_conn() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            # 1. Lấy thông tin lớp và học phần
+            cursor.execute("""
+                SELECT c.name as class_name, c.code as class_code, crs.name as course_name 
+                FROM classes c
+                LEFT JOIN courses crs ON c.course_id = crs.id
+                WHERE c.id = ?
+            """, (class_id,))
+            class_info = cursor.fetchone()
+            if not class_info: return None, None, None
+
+            # 2. Lấy danh sách tất cả sinh viên trong lớp
+            cursor.execute("""
+                SELECT s.id, s.name 
+                FROM students s
+                JOIN class_students cs ON s.id = cs.student_id
+                WHERE cs.class_id = ?
+                ORDER BY GET_TEN(s.name) ASC, s.name ASC
+            """, (class_id,))
+            students = cursor.fetchall()
+
+            # 3. Lấy tất cả các ngày đã có điểm danh trong khoảng thời gian
+            query = """
+                SELECT DISTINCT date(l.time) as session_date 
+                FROM logs l
+                JOIN class_students cs ON l.student_id = cs.student_id
+                WHERE cs.class_id = ?
+            """
+            params = [class_id]
+            if start_date:
+                query += " AND date(l.time) >= ?"
+                params.append(start_date)
+            if end_date:
+                query += " AND date(l.time) <= ?"
+                params.append(end_date)
+            query += " ORDER BY session_date ASC"
+            
+            cursor.execute(query, params)
+            dates = [row['session_date'] for row in cursor.fetchall()]
+
+            # 4. Lấy toàn bộ logs tương ứng
+            query = """
+                SELECT l.student_id, l.action, l.time 
+                FROM logs l
+                JOIN class_students cs ON l.student_id = cs.student_id
+                WHERE cs.class_id = ?
+            """
+            params = [class_id]
+            if start_date:
+                query += " AND date(l.time) >= ?"
+                params.append(start_date)
+            if end_date:
+                query += " AND date(l.time) <= ?"
+                params.append(end_date)
+            query += " ORDER BY l.time ASC"
+            
+            cursor.execute(query, params)
+            all_logs = cursor.fetchall()
+
+            # Tổ chức lại log: {date: {student_id: status}}
+            matrix = {d: {} for d in dates}
+            
+            # Tạm thời gom nhóm log theo ngày và sinh viên
+            grouped_logs = {} # (date, student_id) -> [actions]
+            for log in all_logs:
+                d = log['time'].split(' ')[0]
+                s_id = log['student_id']
+                if (d, s_id) not in grouped_logs:
+                    grouped_logs[(d, s_id)] = []
+                grouped_logs[(d, s_id)].append(log)
+
+            # Xác định trạng thái cho từng ô trong ma trận
+            # Lấy giờ bắt đầu của các session để tính đi trễ
+            cursor.execute("SELECT session_date, start_time FROM class_sessions WHERE class_id = ?", (class_id,))
+            session_starts = {row['session_date']: row['start_time'] for row in cursor.fetchall()}
+            late_limit = int(self.get_setting("late_limit_minutes", "15"))
+
+            for d in dates:
+                for s in students:
+                    s_id = s['id']
+                    logs = grouped_logs.get((d, s_id), [])
+                    
+                    status = "" # Trống nếu không có log
+                    if logs:
+                        # Kiểm tra manual status trước
+                        if any(l['action'] == 'EXCUSED' for l in logs):
+                            status = "P" # Vắng có phép
+                        elif any(l['action'] == 'UNEXCUSED' for l in logs):
+                            status = "K" # Vắng không phép
+                        else:
+                            ins = [l for l in logs if l['action'] == 'IN']
+                            if ins:
+                                status = "x" # Mặc định là có mặt
+                                # Kiểm tra đi trễ
+                                start_time_str = session_starts.get(d)
+                                if start_time_str:
+                                    try:
+                                        sess_start = datetime.strptime(f"{d} {start_time_str}", "%Y-%m-%d %H:%M")
+                                        actual_in = datetime.strptime(ins[0]['time'], "%Y-%m-%d %H:%M:%S")
+                                        if (actual_in - sess_start).total_seconds() > late_limit * 60:
+                                            status = "T" # Đi trễ
+                                    except: pass
+                            elif any(l['action'] == 'OUT' for l in logs):
+                                status = "x" # Chỉ có OUT vẫn tính là có mặt (hoặc T tùy logic)
+
+                    matrix[d][s_id] = status
+
+            return class_info, students, matrix
 
     # --- TKB & SESSION MANAGEMENT ---
     
@@ -1063,78 +1344,186 @@ class AttendanceDB:
             conn.commit()
             
     def generate_sessions_for_class(self, class_id):
-        """Sinh ra các buổi học thực tế dựa trên TKB và học kỳ hiện tại"""
-        semester = self.get_current_semester()
-        if not semester:
-            return False, "Chưa thiết lập học kỳ hiện tại."
-            
-        start_date = datetime.strptime(semester['start_date'], '%Y-%m-%d')
-        end_date = datetime.strptime(semester['end_date'], '%Y-%m-%d')
-        
-        schedules = self.get_class_schedules(class_id)
-        if not schedules:
-            return False, "Lớp chưa có thời khóa biểu gốc."
-            
-        # Lấy thông tin periods để tính giờ
-        periods = {p['id']: p for p in self.get_all_periods()}
-        early_checkin_minutes = int(self.get_setting("early_checkin_minutes", 15))
-            
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            # Xóa các session tương lai (hoặc tất cả session SCHEDULED) của lớp này
-            cursor.execute("DELETE FROM class_sessions WHERE class_id = ? AND status = 'SCHEDULED'", (class_id,))
-            cursor.execute("DELETE FROM device_payloads WHERE class_id = ? AND status = 'PENDING'", (class_id,))
-            
-            from datetime import timedelta
-            
-            count = 0
-            current_date = start_date
-            while current_date <= end_date:
-                # python weekday(): Monday is 0, Sunday is 6
-                # CSDL weekday: 2=Monday, 8=Sunday
-                current_weekday = current_date.weekday() + 2
+        """
+        Smart Recalculation Logic:
+        - Subtract periods already taught (COMPLETED status).
+        - Delete all SCHEDULED sessions.
+        - Skip holidays found in 'holidays' table.
+        - Generate from today (or semester start) until Total Periods reached.
+        - Clip last session duration if it exceeds remaining periods.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
                 
-                for sch in schedules:
-                    if sch['weekday'] == current_weekday:
-                        date_str = current_date.strftime('%Y-%m-%d')
-                        start_p_id = sch['start_period_id']
-                        num_p = sch['num_periods']
-                        if not start_p_id or not num_p:
-                            continue
-                            
-                        end_p_id = start_p_id + num_p - 1
+                # 1. Get Course Info & Total Needed
+                cursor.execute("""
+                    SELECT c.total_periods 
+                    FROM courses c 
+                    JOIN classes cl ON cl.course_id = c.id 
+                    WHERE cl.id = ?
+                """, (class_id,))
+                course_row = cursor.fetchone()
+                if not course_row or not course_row['total_periods']:
+                    return False, "Học phần chưa có tổng số tiết định mức."
+                
+                total_needed = course_row['total_periods']
+
+                # 2. Get Already Taught Periods (COMPLETED sessions)
+                cursor.execute("SELECT SUM(num_periods) as taught FROM class_sessions WHERE class_id = ? AND status = 'COMPLETED'", (class_id,))
+                taught_row = cursor.fetchone()
+                taught_periods = taught_row['taught'] or 0
+                
+                remaining_periods = total_needed - taught_periods
+                if remaining_periods <= 0:
+                    cursor.execute("DELETE FROM class_sessions WHERE class_id = ? AND status = 'SCHEDULED'", (class_id,))
+                    conn.commit()
+                    return True, "Học phần đã hoàn thành đủ số tiết."
+
+                # 3. Clear existing SCHEDULED sessions (Recalculate)
+                cursor.execute("DELETE FROM class_sessions WHERE class_id = ? AND status = 'SCHEDULED'", (class_id,))
+                cursor.execute("DELETE FROM device_payloads WHERE class_id = ? AND status = 'PENDING'", (class_id,))
+                
+                # 4. Get Semester Dates & Holidays
+                cursor.execute("SELECT start_date, end_date FROM semesters WHERE is_current = 1")
+                sem = cursor.fetchone()
+                if not sem: return False, "Chưa thiết lập học kỳ hiện tại."
+                
+                cursor.execute("SELECT holiday_date FROM holidays")
+                holidays = [h['holiday_date'] for h in cursor.fetchall()]
+                
+                # 5. Get Weekly Schedules (Explicitly pick times from periods)
+                cursor.execute("""
+                    SELECT s.id, s.class_id, s.weekday, s.room_id, s.num_periods,
+                           p.start_time, p.end_time 
+                    FROM schedules s 
+                    JOIN periods p ON s.start_period_id = p.id 
+                    WHERE s.class_id = ?
+                """, (class_id,))
+                schedules = [dict(row) for row in cursor.fetchall()]
+                if not schedules: return False, "Lớp chưa có thời khóa biểu."
+
+                early_checkin_minutes = int(self.get_setting("early_checkin_minutes", 15))
+                
+                # 6. Generate starting from max(today, sem_start)
+                today = datetime.now().date()
+                sem_start = datetime.strptime(sem['start_date'], '%Y-%m-%d').date()
+                sem_end = datetime.strptime(sem['end_date'], '%Y-%m-%d').date()
+                
+                current_date = max(today, sem_start)
+                count = 0
+                
+                while current_date <= sem_end and remaining_periods > 0:
+                    date_str = current_date.strftime('%Y-%m-%d')
+                    if date_str in holidays:
+                        current_date += timedelta(days=1)
+                        continue
+                    
+                    current_weekday = current_date.weekday() + 2
+                    day_schedules = [s for s in schedules if s['weekday'] == current_weekday]
+                    day_schedules.sort(key=lambda x: x['start_time'])
+                    
+                    for sch in day_schedules:
+                        if remaining_periods <= 0: break
                         
-                        # Handle potential missing period mappings gracefully
-                        try:
-                            start_time = periods[start_p_id]['start_time']
-                            end_time = periods[end_p_id]['end_time']
-                        except KeyError:
-                            start_time = "00:00"
-                            end_time = "00:00"
-                        
+                        num_p = min(remaining_periods, sch['num_periods'])
+                        start_time = sch['start_time']
+                        end_time = sch['end_time']
                         room_id = sch['room_id']
                         
                         cursor.execute("""
-                            INSERT INTO class_sessions (class_id, session_date, start_time, end_time, room_id, status)
-                            VALUES (?, ?, ?, ?, ?, 'SCHEDULED')
-                        """, (class_id, date_str, start_time, end_time, room_id))
+                            INSERT INTO class_sessions (class_id, session_date, start_time, end_time, room_id, status, num_periods)
+                            VALUES (?, ?, ?, ?, ?, 'SCHEDULED', ?)
+                        """, (class_id, date_str, start_time, end_time, room_id, num_p))
                         
-                        # Generate payload for Edge Device
+                        # Edge payload
                         if start_time != "00:00":
                             start_dt = datetime.strptime(f"{date_str} {start_time}", '%Y-%m-%d %H:%M')
                             trigger_start = (start_dt - timedelta(minutes=early_checkin_minutes)).strftime('%H:%M')
-                            trigger_end = end_time
                             cursor.execute("""
                                 INSERT INTO device_payloads (room_id, class_id, date, trigger_start, trigger_end, status)
                                 VALUES (?, ?, ?, ?, ?, 'PENDING')
-                            """, (room_id, class_id, date_str, trigger_start, trigger_end))
-                            
+                            """, (room_id, class_id, date_str, trigger_start, end_time))
+                        
+                        remaining_periods -= num_p
                         count += 1
+                    
+                    current_date += timedelta(days=1)
+                    
+                conn.commit()
+                return True, f"Đã sinh/tính toán lại {count} buổi học. Tiết còn lại chưa xếp: {remaining_periods}"
+        except Exception as e:
+            return False, str(e)
+
+    def preview_sessions_for_class(self, class_id, schedules_list=None):
+        """Simulate session generation and return list of dates for UI preview"""
+        from datetime import datetime, timedelta
+        try:
+            with self._get_conn() as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
                 
-                current_date += timedelta(days=1)
+                cursor.execute("SELECT c.total_periods, cl.name FROM courses c JOIN classes cl ON cl.course_id = c.id WHERE cl.id = ?", (class_id,))
+                course_row = cursor.fetchone()
+                if not course_row: return []
                 
-            conn.commit()
-            return True, f"Đã sinh {count} buổi học và payload thiết bị."
+                total_needed = course_row['total_periods']
+                cursor.execute("SELECT SUM(num_periods) as taught FROM class_sessions WHERE class_id = ? AND status = 'COMPLETED'", (class_id,))
+                taught_periods = cursor.fetchone()['taught'] or 0
+                remaining_periods = total_needed - taught_periods
+                
+                cursor.execute("SELECT start_date, end_date FROM semesters WHERE is_current = 1")
+                sem = cursor.fetchone()
+                if not sem: return []
+                
+                cursor.execute("SELECT holiday_date FROM holidays")
+                holidays = [h['holiday_date'] for h in cursor.fetchall()]
+                
+                if schedules_list is None:
+                    cursor.execute("""
+                        SELECT s.weekday, s.num_periods, p.start_time, p.end_time 
+                        FROM schedules s JOIN periods p ON s.start_period_id = p.id WHERE s.class_id = ?
+                    """, (class_id,))
+                    schedules = [dict(row) for row in cursor.fetchall()]
+                else:
+                    # Enrich schedules_list with times from periods table
+                    schedules = []
+                    for sch in schedules_list:
+                        cursor.execute("SELECT start_time FROM periods WHERE id = ?", (sch['start_period_id'],))
+                        p_start = cursor.fetchone()
+                        cursor.execute("SELECT end_time FROM periods WHERE id = ?", (sch['start_period_id'] + sch['num_periods'] - 1,))
+                        p_end = cursor.fetchone()
+                        
+                        s_enriched = sch.copy()
+                        s_enriched['start_time'] = p_start['start_time'] if p_start else '--:--'
+                        s_enriched['end_time'] = p_end['end_time'] if p_end else '--:--'
+                        schedules.append(s_enriched)
+                
+                current_date = max(datetime.now().date(), datetime.strptime(sem['start_date'], '%Y-%m-%d').date())
+                sem_end = datetime.strptime(sem['end_date'], '%Y-%m-%d').date()
+                
+                preview_list = []
+                while current_date <= sem_end and remaining_periods > 0:
+                    date_str = current_date.strftime('%Y-%m-%d')
+                    if date_str not in holidays:
+                        current_weekday = current_date.weekday() + 2
+                        day_schedules = [s for s in schedules if s['weekday'] == current_weekday]
+                        day_schedules.sort(key=lambda x: x['start_time'])
+                        
+                        for sch in day_schedules:
+                            if remaining_periods <= 0: break
+                            num_p = min(remaining_periods, sch['num_periods'])
+                            preview_list.append({
+                                'date': date_str,
+                                'time': f"{sch['start_time']} - {sch['end_time']}",
+                                'weekday': ['','','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'][current_weekday],
+                                'periods': num_p
+                            })
+                            remaining_periods -= num_p
+                    current_date += timedelta(days=1)
+                return preview_list
+        except: return []
 
     def get_class_sessions(self, class_id):
         with self._get_conn() as conn:
@@ -1142,6 +1531,24 @@ class AttendanceDB:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM class_sessions WHERE class_id = ? ORDER BY session_date ASC, start_time ASC", (class_id,))
             return cursor.fetchall()
+
+    def get_editable_sessions(self, class_id, days_limit=7):
+        """Lấy danh sách các buổi học trong vòng 7 ngày qua để giảng viên điểm danh bù"""
+        from datetime import datetime, timedelta
+        limit_date = (datetime.now() - timedelta(days=days_limit)).strftime('%Y-%m-%d')
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        with self._get_conn() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            # Lấy các buổi đã qua (từ 7 ngày trước đến hôm nay)
+            cursor.execute("""
+                SELECT id, session_date, start_time, end_time, status, num_periods
+                FROM class_sessions 
+                WHERE class_id = ? AND session_date >= ? AND session_date <= ?
+                ORDER BY session_date DESC, start_time DESC
+            """, (class_id, limit_date, today))
+            return [dict(row) for row in cursor.fetchall()]
 
     def update_session_status(self, session_id, status):
         with sqlite3.connect(self.db_path) as conn:
@@ -1189,5 +1596,71 @@ class AttendanceDB:
                 checkout_end = end_t + timedelta(minutes=late_out_min)
                 
                 if checkin_start <= now <= checkout_end:
-                    return s
+                    return dict(s)
             return None
+
+    def get_upcoming_session(self):
+        """Tìm ca học tiếp theo trong ngày chưa đến giờ điểm danh"""
+        now = datetime.now()
+        date_str = now.strftime('%Y-%m-%d')
+        with self._get_conn() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT cs.*, c.name as class_name 
+                FROM class_sessions cs
+                JOIN classes c ON cs.class_id = c.id
+                WHERE cs.session_date = ? AND cs.status = 'SCHEDULED'
+                ORDER BY cs.start_time ASC
+            """, (date_str,))
+            sessions = cursor.fetchall()
+            for s in sessions:
+                start_t = datetime.strptime(f"{date_str} {s['start_time']}", '%Y-%m-%d %H:%M')
+                if start_t > now:
+                    return dict(s)
+        return None
+    def get_holidays(self):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM holidays ORDER BY holiday_date ASC")
+                return [dict(row) for row in cursor.fetchall()]
+        except: return []
+
+    def create_holiday(self, name, start_date, end_date=None):
+        try:
+            from datetime import datetime, timedelta
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end = start
+            if end_date:
+                end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            
+            dates_to_add = []
+            curr = start
+            while curr <= end:
+                dates_to_add.append(curr)
+                # Compensation logic: If Sunday, add next Monday
+                if curr.weekday() == 6: # Sunday
+                    dates_to_add.append(curr + timedelta(days=1))
+                curr += timedelta(days=1)
+            
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                for d in dates_to_add:
+                    d_str = d.strftime('%Y-%m-%d')
+                    cursor.execute("INSERT OR IGNORE INTO holidays (name, holiday_date) VALUES (?, ?)", (name, d_str))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error create_holiday: {e}")
+            return False
+
+    def delete_holiday(self, holiday_id):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM holidays WHERE id = ?", (holiday_id,))
+                conn.commit()
+                return True
+        except: return False

@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify
 from app import db
 from app.core.auth_utils import admin_required
+from app.utils.excel_parser import parse_curriculum_excel
+import os
 
 academic_bp = Blueprint('academic', __name__, url_prefix='/admin/academic')
 
@@ -14,10 +16,11 @@ def academic_page():
     classes = db.get_all_classes(per_page=1000)
     rooms = db.get_all_rooms()
     periods = db.get_all_periods()
+    holidays = db.get_holidays()
     return render_template('admin_academic.html',
                            depts=depts, majors=majors, courses=courses,
                            semesters=semesters, classes=classes,
-                           rooms=rooms, periods=periods)
+                           rooms=rooms, periods=periods, holidays=holidays)
 
 # ---- DEPARTMENTS ----
 @academic_bp.route('/department', methods=['POST'])
@@ -78,16 +81,35 @@ def delete_major(major_id):
 @admin_required
 def create_course():
     data = request.json
-    success = db.create_course(data['name'], data['major_id'])
+    success = db.create_course(
+        name=data['name'], 
+        major_id=data.get('major_id'),
+        code=data.get('code'),
+        category=data.get('category'),
+        credits=data.get('credits', 0),
+        lt_credits=data.get('lt_credits', 0),
+        th_credits=data.get('th_credits', 0),
+        total_periods=data.get('total_periods', 0)
+    )
     if success:
         return jsonify({"status": "success", "message": "Đã thêm Học phần"})
-    return jsonify({"status": "error", "message": "Tên Học phần đã tồn tại"}), 400
+    return jsonify({"status": "error", "message": "Lỗi thêm học phần"}), 400
 
 @academic_bp.route('/course/<int:course_id>', methods=['PUT'])
 @admin_required
 def update_course(course_id):
     data = request.json
-    success = db.update_course(course_id, data['name'], data['major_id'])
+    success = db.update_course(
+        course_id=course_id,
+        name=data['name'],
+        major_id=data.get('major_id'),
+        code=data.get('code'),
+        category=data.get('category'),
+        credits=data.get('credits', 0),
+        lt_credits=data.get('lt_credits', 0),
+        th_credits=data.get('th_credits', 0),
+        total_periods=data.get('total_periods', 0)
+    )
     if success:
         return jsonify({"status": "success", "message": "Đã cập nhật Học phần"})
     return jsonify({"status": "error", "message": "Lỗi cập nhật"}), 400
@@ -158,6 +180,21 @@ def delete_room(room_id):
         return jsonify({"status": "success"})
     return jsonify({"status": "error", "message": "Lỗi xóa phòng học"}), 400
 
+# ---- HOLIDAYS ----
+@academic_bp.route('/holiday', methods=['POST'])
+@admin_required
+def create_holiday():
+    data = request.json
+    success = db.create_holiday(data['name'], data['date'], data.get('end_date'))
+    if success: return jsonify({"status": "success", "message": "Đã thêm ngày nghỉ"})
+    return jsonify({"status": "error", "message": "Lỗi thêm ngày nghỉ"}), 400
+
+@academic_bp.route('/holiday/<int:h_id>', methods=['DELETE'])
+@admin_required
+def delete_holiday(h_id):
+    db.delete_holiday(h_id)
+    return jsonify({"status": "success", "message": "Đã xóa ngày nghỉ"})
+
 # ---- SCHEDULE ----
 @academic_bp.route('/class/<int:class_id>/schedules', methods=['GET'])
 @admin_required
@@ -188,7 +225,18 @@ def save_class_schedules(class_id):
     if success:
         return jsonify({"status": "success", "message": f"Lưu TKB thành công. {msg}"})
     else:
-        return jsonify({"status": "error", "message": f"Lưu TKB nhưng lỗi sinh buổi học: {msg}"}), 500
+        return jsonify({"status": "error", "message": f"Lỗi sinh buổi học: {msg}"}), 500
+
+@academic_bp.route('/class/<int:class_id>/sessions/preview', methods=['GET', 'POST'])
+@admin_required
+def preview_sessions(class_id):
+    schedules_list = None
+    if request.method == 'POST':
+        data = request.json
+        schedules_list = data.get('schedules', [])
+    
+    preview = db.preview_sessions_for_class(class_id, schedules_list)
+    return jsonify(preview)
 
 # ---- EXCEL IMPORT for Academic Data ----
 @academic_bp.route('/import/departments', methods=['POST'])
@@ -220,6 +268,34 @@ def import_courses():
             return False
         return db.create_course(row['Tên Học phần'], major_id)
     return _import_excel_generic(request, 'course', ['Tên Học phần', 'Tên Ngành'], process)
+
+@academic_bp.route('/import/curriculum', methods=['POST'])
+@admin_required
+def import_curriculum():
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "Không tìm thấy file"}), 400
+    file = request.files['file']
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        return jsonify({"status": "error", "message": "Chỉ chấp nhận file Excel (.xlsx)"}), 400
+    
+    # Save file temporarily
+    upload_dir = 'data/uploads'
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, file.filename)
+    file.save(file_path)
+    
+    try:
+        courses_data = parse_curriculum_excel(file_path)
+        if not courses_data:
+            return jsonify({"status": "error", "message": "Không tìm thấy dữ liệu học phần hợp lệ trong file"}), 400
+        
+        count = db.import_curriculum_courses(courses_data)
+        return jsonify({"status": "success", "message": f"Đã nhập/cập nhật {count} học phần từ chương trình đào tạo"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Lỗi xử lý: {str(e)}"}), 500
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 def _import_excel_generic(req, entity_name, required_cols, process_fn):
     try:

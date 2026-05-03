@@ -6,6 +6,33 @@
     <title>Kiosk Điểm Danh</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/kiosk.css') }}">
+    <style>
+        .session-info {
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            text-align: center;
+            font-weight: 600;
+        }
+        .btn-check.active {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            box-shadow: 0 0 20px rgba(46, 204, 113, 0.4);
+            animation: pulse 2s infinite;
+        }
+        .btn-check.upcoming {
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+        }
+        .btn-check.idle {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            opacity: 0.8;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(46, 204, 113, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+        }
+    </style>
 </head>
 <body>
 
@@ -21,6 +48,7 @@
         </div>
 
         <div class="action-panel">
+            <div id="session-info" class="session-info">Đang kiểm tra tiết học...</div>
             <button class="btn-check" id="btn-check" onclick="performCheckIn()">
                 ĐIỂM DANH
             </button>
@@ -40,10 +68,10 @@
     </div>
 
     <script>
-        // Thêm timestamp để tránh bị trình duyệt block khi mở nhiều tab camera
         document.getElementById('kiosk-cam').src = "{{ url_for('attendance.video_feed') }}?t=" + new Date().getTime();
 
         const btnCheck = document.getElementById('btn-check');
+        const sessionInfo = document.getElementById('session-info');
         const popup = document.getElementById('popup');
         const popupIcon = document.getElementById('popup-icon');
         const popupTitle = document.getElementById('popup-title');
@@ -53,16 +81,44 @@
 
         function showPopup(type, title, message) {
             clearTimeout(popupTimeout);
-            
             popup.className = `popup show ${type}-theme`;
             popupIcon.innerHTML = type === 'success' ? '✅' : '❌';
             popupTitle.innerText = title;
             popupMessage.innerText = message;
-
             popupTimeout = setTimeout(() => {
                 popup.classList.remove('show');
             }, 4000);
         }
+
+        function updateSessionStatus() {
+            fetch('/api/kiosk/current_session')
+            .then(res => res.json())
+            .then(data => {
+                btnCheck.classList.remove('active', 'upcoming', 'idle');
+                
+                if (data.status === 'active') {
+                    btnCheck.classList.add('active');
+                    btnCheck.disabled = false;
+                    sessionInfo.innerHTML = `<span style="color:#2ecc71">● Đang diễn ra:</span> ${data.class_name}`;
+                    btnCheck.innerHTML = `ĐIỂM DANH<br><small style="font-size:0.65rem">${data.start_time} - ${data.end_time}</small>`;
+                } else if (data.status === 'upcoming') {
+                    btnCheck.classList.add('upcoming');
+                    btnCheck.disabled = false;
+                    sessionInfo.innerHTML = `<span style="color:#f1c40f">● Sắp diễn ra:</span> ${data.class_name}`;
+                    btnCheck.innerHTML = `CHỜ ĐẾN GIỜ<br><small style="font-size:0.65rem">Bắt đầu lúc ${data.start_time}</small>`;
+                } else {
+                    btnCheck.classList.add('idle');
+                    btnCheck.disabled = true;
+                    sessionInfo.innerText = "Hiện không có ca học nào";
+                    btnCheck.innerText = "ĐIỂM DANH";
+                }
+            })
+            .catch(err => console.error("Session update failed", err));
+        }
+
+        // Poll session info every 15 seconds
+        setInterval(updateSessionStatus, 15000);
+        updateSessionStatus();
 
         function exitApp() {
             if (confirm("Bạn có chắc chắn muốn thoát ứng dụng?")) {
@@ -72,12 +128,11 @@
         }
 
         function performCheckIn() {
+            const originalText = btnCheck.innerHTML;
             btnCheck.disabled = true;
             btnCheck.innerText = "...";
 
-            fetch('/api/kiosk/check', {
-                method: 'POST'
-            })
+            fetch('/api/kiosk/check', { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
@@ -91,9 +146,8 @@
             })
             .finally(() => {
                 setTimeout(() => {
-                    btnCheck.disabled = false;
-                    btnCheck.innerText = "ĐIỂM DANH";
-                }, 2000); // Khoảng nghỉ 2s để tránh spam
+                    updateSessionStatus();
+                }, 2000);
             });
         }
     </script>

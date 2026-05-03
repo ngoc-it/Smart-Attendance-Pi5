@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, Response, request, session, jsonify
+from flask import Blueprint, render_template, Response, request, session, jsonify, url_for
 from datetime import datetime
 import cv2
 import time
@@ -23,20 +23,24 @@ def index():
         classes = db.get_all_classes(per_page=100)
     else:
         classes = db.get_user_classes(user_id)
-        if not class_id and classes:
-            class_id = classes[0][0]
+        # Bỏ phần tự động chọn lớp đầu tiên để hiện trang Hub (chọn lớp)
             
     # Dữ liệu chính
-    students = db.get_all_students(user_id=user_id, class_id=class_id, page=page, per_page=per_page)
-    total_students = db.get_student_count(user_id=user_id, class_id=class_id)
+    students = []
+    total_students = 0
+    face_status = {}
     
-    # Thời khóa biểu & Nghỉ phép
+    if class_id:
+        students = db.get_all_students(user_id=user_id, class_id=class_id, page=page, per_page=per_page)
+        total_students = db.get_student_count(user_id=user_id, class_id=class_id)
+        
+        # Kiểm tra trạng thái khuôn mặt
+        student_ids = [s[0] for s in students]
+        face_status = db.get_face_registration_status(student_ids)
+    
+    # Thời khóa biểu & Nghỉ phép luôn lấy để hiển thị ở Hub hoặc Detail
     schedule = db.get_user_schedule(user_id)
     leave_requests = db.get_leave_requests(user_id)
-    
-    # Kiểm tra trạng thái khuôn mặt
-    student_ids = [s[0] for s in students]
-    face_status = db.get_face_registration_status(student_ids)
     
     pagination = {
         "current": page,
@@ -54,7 +58,8 @@ def index():
                            leave_requests=leave_requests,
                            face_status=face_status,
                            classes=classes,
-                           selected_class_id=class_id)
+                           selected_class_id=class_id,
+                           now_date=datetime.now().strftime("%d/%m/%Y"))
 
 @attendance_bp.route('/leave/update', methods=['POST'])
 @lecturer_required
@@ -111,10 +116,15 @@ def reports():
         
         # Thống kê nhanh cho lớp được chọn
         total = len(detailed_report)
-        present = len([r for r in detailed_report if r['status'] != 'Vắng'])
+        present = len([r for r in detailed_report if r['status'] in ['Hoàn thành', 'Đi trễ', 'Có mặt', 'Chưa Checkout']])
+        excused = len([r for r in detailed_report if 'Có phép' in r['status']])
+        unexcused = len([r for r in detailed_report if 'Không phép' in r['status'] or r['status'] == 'Vắng'])
+        
         stats = {
             "total": total,
             "present": present,
+            "excused": excused,
+            "unexcused": unexcused,
             "absent": total - present
         }
     
@@ -168,6 +178,132 @@ def export_excel():
     output.seek(0)
     
     filename = f"DiemDanh_{target_class}_{date_str}.xlsx"
+    return send_file(output, 
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True,
+                     download_name=filename)
+
+@attendance_bp.route('/reports/export_summary')
+@login_required
+def export_summary_excel():
+    import pandas as pd
+    import io
+    from flask import send_file
+    from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+    
+    class_id = request.args.get('class_id', type=int)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    if not class_id:
+        return "Vui lòng chọn lớp", 400
+        
+    class_info, students, matrix = db.get_attendance_summary_matrix(class_id, start_date, end_date)
+    if not class_info:
+        return "Không tìm thấy dữ liệu", 404
+        
+    # Chuẩn bị dữ liệu cho DataFrame
+    dates = sorted(matrix.keys())
+    data = []
+    for idx, s in enumerate(students):
+        row = {
+            "STT": idx + 1,
+            "MSSV": s['id'],
+            "Họ và Tên": s['name']
+        }
+        
+        absent_count = 0
+        total_sessions = len(dates)
+        
+        for i, d in enumerate(dates):
+            status = matrix[d][s['id']]
+            # Header format: Buổi X (DD/MM)
+            date_obj = datetime.strptime(d, "%Y-%m-%d")
+            header = f"Buổi {i+1}\n({date_obj.strftime('%d/%m')})"
+            row[header] = status or "K" # Mặc định là vắng nếu không có log
+            if status in ["K", "P", ""]:
+                absent_count += 1
+                
+        row["Tổng buổi"] = total_sessions
+        row["Vắng"] = absent_count
+        row["% Nghỉ"] = round((absent_count / total_sessions * 100), 1) if total_sessions > 0 else 0
+        data.append(row)
+        
+    df = pd.DataFrame(data)
+    
+    # Xuất ra Excel với định dạng chuyên nghiệp
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Tong_Hop_Diem_Danh', startrow=4)
+        
+        workbook = writer.book
+        worksheet = writer.sheets['Tong_Hop_Diem_Danh']
+        
+        # 1. Thêm Header thông tin lớp
+        title_font = Font(size=14, bold=True)
+        worksheet['A1'] = "BÁO CÁO TỔNG HỢP ĐIỂM DANH"
+        worksheet['A1'].font = title_font
+        worksheet['A2'] = f"Học phần: {class_info['course_name']} ({class_info['class_code']})"
+        worksheet['A3'] = f"Lớp: {class_info['class_name']} | Dữ liệu tính đến: {datetime.now().strftime('%d/%m/%Y')}"
+        
+        # 2. Định dạng Header Table
+        header_fill = PatternFill(start_color="2D3748", end_color="2D3748", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True)
+        center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+        
+        for cell in worksheet[5]: # Dòng 5 là header (index 0-based is 4, but pandas startrow=4 makes it 5)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center_align
+            cell.border = thin_border
+            
+        # 3. Định dạng dữ liệu & Conditional Formatting (giả lập)
+        present_fill = PatternFill(start_color="C6FFD8", end_color="C6FFD8", fill_type="solid") # Xanh lá nổi bật
+        late_fill = PatternFill(start_color="FEFCBF", end_color="FEFCBF", fill_type="solid") # Vàng nhạt
+        excused_fill = PatternFill(start_color="FFFBEB", end_color="FFFBEB", fill_type="solid") # Cam nhạt
+        absent_fill = PatternFill(start_color="FED7D7", end_color="FED7D7", fill_type="solid") # Đỏ nhạt
+        warning_font = Font(color="C53030", bold=True)
+        
+        # Duyệt qua các dòng dữ liệu
+        for row_idx, row_cells in enumerate(worksheet.iter_rows(min_row=6, max_row=worksheet.max_row)):
+            for cell_idx, cell in enumerate(row_cells):
+                cell.border = thin_border
+                val = str(cell.value)
+                
+                # Căn giữa cho các cột trạng thái và tổng kết
+                if cell_idx >= 3:
+                    cell.alignment = center_align
+                
+                # Tô màu trạng thái
+                if val == 'x': cell.fill = present_fill
+                elif val == 'T': cell.fill = late_fill
+                elif val == 'P': cell.fill = excused_fill
+                elif val == 'K': cell.fill = absent_fill
+                
+                # Cảnh báo nghỉ quá 20% (Cột cuối cùng)
+                if cell_idx == len(row_cells) - 1:
+                    try:
+                        if float(val) >= 20:
+                            cell.font = warning_font
+                            cell.fill = absent_fill
+                    except: pass
+        
+        # 4. Điều chỉnh độ rộng cột
+        from openpyxl.utils import get_column_letter
+        worksheet.column_dimensions['B'].width = 15 # MSSV
+        worksheet.column_dimensions['C'].width = 25 # Họ Tên
+        
+        # Tự động điều chỉnh độ rộng cho các cột Buổi học và Tổng kết
+        for col_idx in range(4, worksheet.max_column + 1):
+            col_letter = get_column_letter(col_idx)
+            worksheet.column_dimensions[col_letter].width = 12
+            
+        # 5. Cố định Pane (STT, MSSV, Họ Tên)
+        worksheet.freeze_panes = 'D6'
+
+    output.seek(0)
+    filename = f"TongHop_{class_info['class_code']}_{datetime.now().strftime('%Y%m%d')}.xlsx"
     return send_file(output, 
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      as_attachment=True,
@@ -267,3 +403,24 @@ def serve_image(filename):
     from flask import send_from_directory
     from config import Config
     return send_from_directory(Config.LOG_IMAGES_DIR, filename)
+
+@attendance_bp.route('/api/attendance/manual', methods=['POST'])
+@lecturer_required
+def attendance_manual():
+    from flask import request
+    data = request.json
+    student_id = data.get('id')
+    action = data.get('action')
+    date_str = data.get('date', datetime.now().strftime("%Y-%m-%d"))
+    reason = data.get('reason')
+    
+    success = db.update_attendance_manual(student_id, action, date_str, reason)
+    if success:
+        return jsonify({"status": "success"})
+    return jsonify({"status": "error", "message": "Lỗi cập nhật"}), 500
+
+@attendance_bp.route('/api/attendance/sessions/<int:class_id>')
+@lecturer_required
+def get_sessions(class_id):
+    sessions = db.get_editable_sessions(class_id)
+    return jsonify(sessions)
