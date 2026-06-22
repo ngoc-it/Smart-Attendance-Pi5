@@ -14,8 +14,8 @@ class Config:
     MATCH_THRESHOLD = 0.65
     
     # Chuoi GStreamer toi uu cho Pi 5 + Camera IMX708
-    # Chuoi nay ep camera phai xuat ra dinh dang RGB de OpenCV hieu duoc
-    GST_STR = "libcamerasrc ! videoconvert ! video/x-raw, width=640, height=480, format=BGR ! appsink drop=True"
+    # Khoi phuc chuoi mac dinh on dinh
+    GST_STR = "libcamerasrc ! video/x-raw, width=640, height=480 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=True"
     
     # Bao mat Session
     SECRET_KEY = "ngoc_smart_attendance_secret"

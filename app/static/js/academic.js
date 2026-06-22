@@ -17,6 +17,8 @@ function switchTab(id) {
     const btn = document.querySelector(`.tab-btn[data-tab="${id}"]`);
     if (btn) btn.classList.add('active');
     localStorage.setItem('activeTabAcademic', id);
+    
+    if (id === 'tab-makeup') loadMakeupRequests();
 }
 
 function showModal(type, id = null, data = {}) {
@@ -108,7 +110,13 @@ function saveModal() {
         apiCall(`${BASE}/holiday`, 'POST', { name, date, end_date }, () => location.reload());
     } else if (modalAction === 'preview_sessions') {
         fetch(`${BASE}/class/${currentClassId}/schedules`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ schedules: currentSchedules }) })
-            .then(r => r.json()).then(d => { alert(d.message); if (d.status === 'success') { closeModal(); document.getElementById('schedule-editor').style.display = 'none'; } });
+            .then(r => r.json()).then(d => { 
+                alert(d.message); 
+                if (d.status === 'success') { 
+                    closeModal(); 
+                    loadSessions(currentClassId); // Tải lại danh sách buổi học sau khi lưu
+                } 
+            });
     }
 }
 
@@ -150,6 +158,58 @@ function openScheduleEditor() {
     currentClassId = id;
     document.getElementById('schedule-editor').style.display = 'block';
     fetch(`${BASE}/class/${id}/schedules`).then(r => r.json()).then(d => { currentSchedules = d; renderSchedules(); });
+    loadSessions(id); // Tải danh sách buổi học thực tế
+}
+
+function loadSessions(classId) {
+    const container = document.getElementById('session-list-container');
+    const tbody = document.getElementById('session-tbody');
+    const badge = document.getElementById('session-count-badge');
+    
+    container.style.display = 'block';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Đang tải danh sách buổi học...</td></tr>';
+    
+    fetch(`${BASE}/class/${classId}/sessions`)
+        .then(r => r.json())
+        .then(sessions => {
+            badge.textContent = `${sessions.length} buổi học`;
+            if (sessions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#888;">Chưa có buổi học nào được sinh ra cho lớp này.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = sessions.map(s => {
+                const date = new Date(s.session_date);
+                const wd = WEEKDAY_MAP[date.getDay() + 1] || s.session_date;
+                let statusStyle = 'color:#666;';
+                let statusText = s.status;
+                
+                if (s.status === 'SCHEDULED') {
+                    statusText = 'Chờ dạy';
+                    statusStyle = 'color:#007bff;font-weight:bold;';
+                } else if (s.status === 'COMPLETED') {
+                    statusText = 'Hoàn thành';
+                    statusStyle = 'color:#28a745;font-weight:bold;';
+                } else if (s.status === 'HOLIDAY') {
+                    statusText = 'Nghỉ lễ';
+                    statusStyle = 'color:#ff9800;font-weight:bold;';
+                }
+                
+                return `
+                    <tr style="border-bottom:1px solid #f5f5f5;">
+                        <td style="padding:10px;"><strong>${s.session_date}</strong></td>
+                        <td style="padding:10px;">${wd}</td>
+                        <td style="padding:10px;">${s.start_time} - ${s.end_time}</td>
+                        <td style="padding:10px;">${s.room_name || s.room || '---'}</td>
+                        <td style="padding:10px;text-align:center;">${s.num_periods}</td>
+                        <td style="padding:10px;text-align:center;${statusStyle}">${statusText}</td>
+                    </tr>
+                `;
+            }).join('');
+        })
+        .catch(err => {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:red;">Lỗi tải dữ liệu buổi học.</td></tr>';
+        });
 }
 
 function renderSchedules() {
@@ -163,10 +223,74 @@ function renderSchedules() {
     });
 }
 
+function loadMakeupRequests() {
+    const tbody = document.getElementById('makeup-requests-tbody');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Đang tải danh sách...</td></tr>';
+    
+    fetch(`${BASE}/makeup/pending`)
+    .then(r => r.json())
+    .then(requests => {
+        if (requests.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#888;">Chưa có yêu cầu dạy bù nào đang chờ duyệt.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = requests.map(m => `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding:12px 10px;"><strong>${m.lecturer_name}</strong></td>
+                <td style="padding:12px 10px;">${m.class_name}</td>
+                <td style="padding:12px 10px;"><code>${m.requested_date}</code></td>
+                <td style="padding:12px 10px;">${m.period_name} - <strong>${m.room_name}</strong></td>
+                <td style="padding:12px 10px;"><small>${m.reason || '---'}</small></td>
+                <td style="padding:12px 10px; text-align:right;">
+                    <button class="btn btn-success btn-sm" onclick="handleMakeup(${m.id}, 'APPROVED')">Duyệt</button>
+                    <button class="btn btn-danger btn-sm" onclick="handleMakeup(${m.id}, 'REJECTED')">Từ chối</button>
+                </td>
+            </tr>
+        `).join('');
+    });
+}
+
+function handleMakeup(reqId, status) {
+    if (!confirm(`Bạn có chắc chắn muốn ${status === 'APPROVED' ? 'DUYỆT' : 'TỪ CHỐI'} yêu cầu này?`)) return;
+    
+    fetch(`${BASE}/makeup/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: reqId, status: status })
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message);
+        loadMakeupRequests();
+    });
+}
+
 function addScheduleRow() {
     const wd = document.getElementById('sch-weekday').value, ps = document.getElementById('sch-start-period'), np = document.getElementById('sch-num-periods').value, rs = document.getElementById('sch-room');
     const pid = ps.value, pname = ps.options[ps.selectedIndex]?.text, rid = rs.value, rname = rs.options[rs.selectedIndex]?.text;
     if (!wd || !pid || !np || !rid) { alert('Vui lòng điền đủ thông tin!'); return; }
+    
+    // Validation: Kiểm tra tràn tiết (Giả định tối đa 10 tiết, có thể cải tiến bằng cách lấy động)
+    if (parseInt(pid) + parseInt(np) - 1 > 12) {
+        alert(`Lỗi: Tiết bắt đầu (${pid}) cộng với ${np} tiết học sẽ vượt quá số tiết tối đa trong ngày (12 tiết).`);
+        return;
+    }
+
+    // Senior Engineer Block Validation
+    function getBlock(pId) {
+        if (pId >= 1 && pId <= 4) return "Sáng";
+        if (pId >= 5 && pId <= 8) return "Chiều";
+        if (pId >= 9 && pId <= 12) return "Tối";
+        return "Khác";
+    }
+    const startBlock = getBlock(parseInt(pid));
+    const endBlock = getBlock(parseInt(pid) + parseInt(np) - 1);
+    if (startBlock !== endBlock) {
+        alert(`Lỗi: Lịch học không được vượt quá ranh giới buổi (Tiết ${pid} là buổi ${startBlock}, tiết kết thúc là buổi ${endBlock}). Vui lòng chọn số tiết phù hợp.`);
+        return;
+    }
+
     currentSchedules.push({ weekday: parseInt(wd), start_period_id: parseInt(pid), period_name: pname.split('(')[0].trim(), num_periods: parseInt(np), room_id: parseInt(rid), room_name: rname });
     renderSchedules();
 }

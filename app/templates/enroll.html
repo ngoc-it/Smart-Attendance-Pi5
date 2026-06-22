@@ -7,73 +7,119 @@
 
 {% block content %}
 <div class="admin-container">
-    <div class="admin-header-row" style="margin-bottom: 24px;">
+    <div class="admin-header-row" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
         <h2 style="border-bottom: none; margin-bottom: 0;">📸 Đăng ký sinh viên mới</h2>
+        <div style="display: flex; gap: 10px;">
+            <label class="btn btn-success" style="margin: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                <i class="fas fa-file-excel"></i> Nhập từ Excel
+                <input type="file" id="import-excel-enroll" accept=".xlsx" style="display: none;" onchange="importStudentsEnroll()">
+            </label>
+            <button class="btn btn-danger" onclick="clearClassStudents()" style="display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                <i class="fas fa-trash-alt"></i> Xóa danh sách lớp
+            </button>
+        </div>
+    </div>
+
+    <!-- SƠ ĐỒ CÁC BƯỚC THỰC HIỆN ĐĂNG KÝ (STEP INDICATOR) -->
+    <div class="steps-container">
+        <div class="step-item active" data-step="1" id="step-1">
+            <div class="step-icon"><i class="fas fa-user-edit"></i></div>
+            <div class="step-text">1. Nhập thông tin</div>
+        </div>
+        <div class="step-item" data-step="2" id="step-2">
+            <div class="step-icon"><i class="fas fa-camera"></i></div>
+            <div class="step-text">2. Chuẩn bị chụp</div>
+        </div>
+        <div class="step-item" data-step="3" id="step-3">
+            <div class="step-icon"><i class="fas fa-circle-notch fa-spin-custom"></i></div>
+            <div class="step-text">3. Đang thu thập</div>
+        </div>
+        <div class="step-item" data-step="4" id="step-4">
+            <div class="step-icon"><i class="fas fa-check-double"></i></div>
+            <div class="step-text">4. Hoàn tất</div>
+        </div>
     </div>
 
     <div class="enroll-container">
         <!-- Cột trái: Camera và Trạng thái -->
-        <div class="card">
-            <h3 style="font-size: 1rem; margin-top: 0; margin-bottom: 15px;">Camera Preview</h3>
-            <div class="camera-preview">
+        <div class="card" style="position: relative;">
+            <h3 style="font-size: 1.1rem; margin-top: 0; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: #1e293b;">
+                <span style="width: 10px; height: 10px; background: var(--primary); border-radius: 50%; display: inline-block;"></span>
+                Camera Live Preview
+            </h3>
+            
+            <!-- Camera container nâng cấp viền và lưới quét -->
+            <div id="camera-container" class="camera-preview">
                 <img id="enroll-video" src="{{ url_for('attendance.video_feed') }}">
+                
+                <!-- Lớp lưới ảo nhắm khuôn mặt (Mesh) -->
+                <div class="camera-mesh"></div>
+                <!-- Vùng bầu dục định vị khuôn mặt -->
+                <div class="camera-target-box"></div>
+                <!-- Đường Laser chạy quét -->
                 <div id="scan-line" class="scan-line"></div>
             </div>
 
+            <!-- Bảng hiển thị Tiến độ và Trạng thái -->
             <div class="progress-container">
                 <div class="progress-bar-wrapper">
                     <div class="progress-bar"></div>
                 </div>
-                <div id="status-msg" class="status-msg">Vui lòng nhìn thẳng vào camera...</div>
+                <div id="status-msg" class="status-msg">
+                    Vui lòng hướng khuôn mặt vào camera...
+                </div>
             </div>
         </div>
 
         <!-- Cột phải: Form thông tin -->
         <div class="card">
-            <h3 style="font-size: 1rem; margin-top: 0; margin-bottom: 20px;">Thông tin sinh viên</h3>
+            <h3 style="font-size: 1.1rem; margin-top: 0; margin-bottom: 20px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                <span style="width: 10px; height: 10px; background: #64748b; border-radius: 50%; display: inline-block;"></span>
+                Thông tin sinh viên đăng ký
+            </h3>
 
             <div class="form-group">
-                <label>Mã số sinh viên (MSSV)</label>
+                <label style="font-weight: 600; color: #475569; margin-bottom: 6px;">Mã số sinh viên (MSSV)</label>
                 <input type="text" id="student_id" value="{{ student.id if student else '' }}" class="form-control"
                     placeholder="VD: 20D12345">
             </div>
 
             <div class="form-group">
-                <label>Họ và Tên</label>
+                <label style="font-weight: 600; color: #475569; margin-bottom: 6px;">Họ và Tên</label>
                 <input type="text" id="name" value="{{ student.name if student else '' }}" class="form-control"
                     placeholder="VD: Nguyễn Văn A">
             </div>
 
             <div class="form-group">
-                <label>Ngày sinh</label>
+                <label style="font-weight: 600; color: #475569; margin-bottom: 6px;">Ngày sinh</label>
                 <input type="date" id="dob" value="{{ student.dob if student else '' }}" class="form-control">
             </div>
 
             <div class="form-group">
-                <label>Lớp hành chính</label>
+                <label style="font-weight: 600; color: #475569; margin-bottom: 6px;">Lớp hành chính</label>
                 <input type="text" id="student_class" value="{{ student.student_class if student else '' }}"
                     class="form-control" placeholder="VD: XD25D01">
             </div>
 
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
                 <button id="enroll-btn" onclick="startEnroll()" class="btn btn-primary"
-                    style="width: 100%; padding: 12px; font-size: 1rem;">
-                    Bắt đầu thu thập khuôn mặt
+                    style="width: 100%; padding: 14px; font-size: 1.05rem; justify-content: center; font-weight: 700; border-radius: 10px;">
+                    <i class="fas fa-camera-retro"></i> Bắt đầu thu thập khuôn mặt
                 </button>
-                <p style="font-size: 0.8rem; color: #666; margin-top: 15px; text-align: center;">
-                    * Lưu ý: Giữ khoảng cách khoảng 50cm, đảm bảo đủ ánh sáng và không đeo kính đen.
+                <p style="font-size: 0.8rem; color: #64748b; margin-top: 15px; text-align: center; line-height: 1.5;">
+                    💡 <strong>Hướng dẫn:</strong> Đứng thẳng cách camera ~50cm, giữ khuôn mặt ở giữa khung hình, đảm bảo đủ ánh sáng và không đeo kính đen hay khẩu trang.
                 </p>
             </div>
         </div>
     </div>
 
-    <!-- PHẦN MỚI: DANH SÁCH CHỌN NHANH -->
+    <!-- PHẦN MỚI: DANH SÁCH CHỌN NHANH SINH VIÊN -->
     <div class="card" style="margin-top: 30px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="font-size: 1.1rem; margin: 0;">📋 Chọn nhanh sinh viên từ lớp</h3>
+            <h3 style="font-size: 1.15rem; margin: 0; font-weight: 700; color: #1e293b;">📋 Chọn nhanh sinh viên từ lớp</h3>
             <div style="display: flex; gap: 10px;">
                 <select id="filter_class_enroll" onchange="filterByClassEnroll()" class="form-control"
-                    style="width: 250px; font-size: 0.85rem;">
+                    style="width: 250px; font-size: 0.85rem; padding: 8px 12px; border-radius: 8px;">
                     <option value="">-- Tất cả lớp --</option>
                     {% for cls in classes %}
                     <option value="{{ cls[0] }}" {% if selected_class_id==cls[0] %}selected{% endif %}>
@@ -103,9 +149,13 @@
                         <td>{{ s[3] or '-' }}</td>
                         <td>
                             {% if face_status[s[0]] %}
-                            <span style="color: var(--success); font-weight: bold;">✓ Đã có ảnh</span>
+                            <span style="color: var(--success); font-weight: bold; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-check-circle"></i> ✓ Đã có ảnh
+                            </span>
                             {% else %}
-                            <span style="color: var(--danger); font-size: 0.8rem;">✗ Chưa có ảnh</span>
+                            <span style="color: var(--danger); font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-times-circle"></i> ✗ Chưa có ảnh
+                            </span>
                             {% endif %}
                         </td>
                         <td style="text-align: right;">

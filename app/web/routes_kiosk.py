@@ -62,24 +62,29 @@ def kiosk_check():
             frame = shared.last_frame.copy()
             
         # 3. Xử lý AI (Nhận diện khuôn mặt)
-        success, msg, student_id = ai_engine.verify_attendance(frame)
+        try:
+            success, msg, student_id = ai_engine.verify_attendance(frame)
+        except Exception as ai_err:
+            return jsonify({"status": "error", "message": f"Lỗi AI: {str(ai_err)}"}), 500
         
         if not success:
             return jsonify({"status": "error", "message": msg}), 400
             
         # 4. Kiểm tra danh sách lớp (Sinh viên có thuộc lớp này không?)
-        # Lưu ý: get_all_students trả về list các tuple/row
-        students = db.get_all_students(class_id=class_id, per_page=1000)
-        student_data = next((s for s in students if s[0] == student_id), None)
-        
-        if not student_data:
-            return jsonify({
-                "status": "error", 
-                "message": f"Bạn không có trong danh sách lớp {active_session['class_name']}!"
-            }), 403
+        try:
+            students = db.get_all_students(class_id=class_id, per_page=1000)
+            student_data = next((s for s in students if s[0] == student_id), None)
             
-        student_name = student_data[1]
-        current_status = student_data[4]
+            if not student_data:
+                return jsonify({
+                    "status": "error", 
+                    "message": f"Bạn không có trong danh sách lớp {active_session['class_name']}!"
+                }), 403
+                
+            student_name = student_data[1]
+            current_status = student_data[4]
+        except Exception as db_err:
+            return jsonify({"status": "error", "message": f"Lỗi dữ liệu sinh viên: {str(db_err)}"}), 500
                 
         # 5. Quyết định hành động (IN / OUT)
         new_action = "OUT" if current_status == "IN" else "IN"
@@ -97,7 +102,10 @@ def kiosk_check():
         cv2.imwrite(image_path, save_frame)
         
         # 7. Lưu vào DB
-        db.update_status(student_id, student_name, new_action, image_filename)
+        try:
+            db.update_status(student_id, student_name, new_action, image_filename)
+        except Exception as upd_err:
+            return jsonify({"status": "error", "message": f"Lỗi cập nhật điểm danh: {str(upd_err)}"}), 500
         
         # 8. Phản hồi
         welcome_msg = f"Xin chào, {student_name}!" if new_action == "IN" else f"Tạm biệt, {student_name}!"

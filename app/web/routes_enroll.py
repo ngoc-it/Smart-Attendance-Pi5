@@ -191,3 +191,25 @@ def clear_class():
         
     db.remove_all_students_from_class(class_id)
     return jsonify({"status": "success", "message": "Đã xóa toàn bộ sinh viên khỏi danh sách lớp này."})
+
+@enroll_bp.route('/api/enroll/manual', methods=['POST'])
+@lecturer_required
+def enroll_manual():
+    """Thêm sinh viên thủ công (không nạp khuôn mặt)"""
+    try:
+        data = request.json
+        s_id = data.get('mssv')
+        s_name = data.get('name')
+        s_dob = data.get('dob', '')
+        s_class = data.get('student_class', '')
+        course_class_id = data.get('course_class_id')
+        
+        if not s_id or not s_name:
+            return jsonify({"status": "error", "message": "Thiếu MSSV hoặc Họ tên"}), 400
+            
+        # Lưu vào db
+        db.enroll_student(s_id, s_name, s_dob, s_class, course_class_id=course_class_id)
+        
+        return jsonify({"status": "success", "message": f"Đã thêm sinh viên {s_name} vào lớp."})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500

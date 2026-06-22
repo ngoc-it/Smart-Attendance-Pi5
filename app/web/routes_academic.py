@@ -202,6 +202,12 @@ def get_class_schedules(class_id):
     schedules = db.get_class_schedules(class_id)
     return jsonify([dict(s) for s in schedules])
 
+@academic_bp.route('/class/<int:class_id>/sessions', methods=['GET'])
+@admin_required
+def get_class_sessions(class_id):
+    sessions = db.get_class_sessions(class_id)
+    return jsonify([dict(s) for s in sessions])
+
 @academic_bp.route('/class/<int:class_id>/schedules', methods=['POST'])
 @admin_required
 def save_class_schedules(class_id):
@@ -237,6 +243,27 @@ def preview_sessions(class_id):
     
     preview = db.preview_sessions_for_class(class_id, schedules_list)
     return jsonify(preview)
+
+# ---- MAKEUP REQUESTS ----
+@academic_bp.route('/makeup/pending', methods=['GET'])
+@admin_required
+def get_pending_makeups():
+    requests = db.get_pending_makeup_requests()
+    return jsonify([dict(r) for r in requests])
+
+@academic_bp.route('/makeup/approve', methods=['POST'])
+@admin_required
+def approve_makeup():
+    data = request.json
+    req_id = data.get('request_id')
+    status = data.get('status') # APPROVED or REJECTED
+    admin_id = session.get('user_id')
+    
+    success = db.update_makeup_request_status(req_id, status, admin_id)
+    if success:
+        return jsonify({"status": "success", "message": f"Đã { 'duyệt' if status == 'APPROVED' else 'từ chối' } yêu cầu dạy bù."})
+    return jsonify({"status": "error", "message": "Lỗi cập nhật yêu cầu"}), 500
+
 
 # ---- EXCEL IMPORT for Academic Data ----
 @academic_bp.route('/import/departments', methods=['POST'])

@@ -3,8 +3,21 @@ import threading
 import time
 import numpy as np
 import os
+import atexit
 from config import Config
 from app.core import shared
+
+_global_cap = None
+
+@atexit.register
+def cleanup_camera():
+    global _global_cap
+    if _global_cap is not None:
+        try:
+            _global_cap.release()
+            print("Camera resource safely released on exit.")
+        except Exception:
+            pass
 
 def video_worker():
     """Luồng xử lý camera sử dụng GStreamer (libcamerasrc) - Tối ưu và ổn định cho Pi 5"""
@@ -29,20 +42,14 @@ def video_worker():
     time.sleep(2) 
     
     while True:
+        global _global_cap
         cap = None
         try:
             log_debug(f"Attempting to open camera (Trial {retry_count + 1})...")
             
-            # Giải phóng các tiến trình cũ có thể đang chiếm giữ camera
-            # Đặc biệt là Pipewire/Wireplumber thường gây lỗi 'Device or resource busy' trên Pi 5
-            os.system("pkill -9 pipewire")
-            os.system("pkill -9 wireplumber")
-            os.system("pkill -9 rpicam")
-            os.system("pkill -9 libcamera")
-            time.sleep(1.5)
-
             # Khởi tạo VideoCapture với backend GSTREAMER
             cap = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
+            _global_cap = cap
             
             if not cap.isOpened():
                 log_debug("Failed to open GStreamer pipeline. Checking if camera is busy or disconnected.")
@@ -50,6 +57,7 @@ def video_worker():
                 gst_backup = "libcamerasrc ! videoconvert ! video/x-raw, format=BGR ! appsink drop=True"
                 log_debug(f"Trying backup pipeline: {gst_backup}")
                 cap = cv2.VideoCapture(gst_backup, cv2.CAP_GSTREAMER)
+                _global_cap = cap
 
             if not cap.isOpened():
                 raise Exception("Could not open any GStreamer pipeline.")
@@ -62,10 +70,10 @@ def video_worker():
             while True:
                 ret, frame = cap.read()
                 
-                if not ret:
+                if not ret or frame is None:
                     consecutive_failures += 1
-                    if consecutive_failures > 50: 
-                        log_debug("Loss of signal from camera. Restarting pipeline...")
+                    if consecutive_failures > 30: # Giam tu 50 xuong 30 de restart nhanh hon
+                        log_debug("Continuous frame failure detected. Restarting GStreamer pipeline...")
                         break
                     time.sleep(0.01)
                     continue
@@ -88,6 +96,7 @@ def video_worker():
         finally:
             if cap is not None:
                 cap.release()
+                _global_cap = None
             log_debug("Camera resource released. Waiting 3 seconds before retry...")
             
         retry_count += 1

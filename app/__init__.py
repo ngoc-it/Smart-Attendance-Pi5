@@ -8,8 +8,11 @@ db = AttendanceDB(Config.DB_PATH)
 ai_engine = FaceEngine(db)
 
 def create_app():
-    app = Flask(__name__)  # Thụt lề 4 khoảng trắng
-    app.config.from_object(Config) # Thụt lề 4 khoảng trắng
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    
+    import logging
+    logging.basicConfig(filename='flask_errors.log', level=logging.ERROR)
 
     # Đăng ký Blueprints
     from app.web.routes_attendance import attendance_bp # Thụt lề 4 khoảng trắng

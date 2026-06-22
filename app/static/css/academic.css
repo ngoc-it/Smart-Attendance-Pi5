@@ -36,3 +36,34 @@
     align-items: center;
     gap: 8px;
 }
+
+/* Session List Styling */
+#session-tbody tr {
+    transition: background-color 0.2s;
+}
+
+#session-tbody tr:hover {
+    background-color: #f1f5f9 !important;
+}
+
+#session-list-container div::-webkit-scrollbar {
+    width: 6px;
+}
+
+#session-list-container div::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+#session-list-container div::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+#session-list-container div::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+#session-count-badge {
+    box-shadow: 0 2px 4px rgba(23, 162, 184, 0.2);
+}

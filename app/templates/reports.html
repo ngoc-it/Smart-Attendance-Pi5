@@ -37,82 +37,80 @@
         </div>
     </div>
 
-    {% if stats %}
+    {% if report %}
     <div class="reports-container">
-        <!-- Thống kê nhanh -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Sĩ số lớp</div>
-                <div class="stat-value" style="color: var(--primary);">{{ stats.total }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Có mặt</div>
-                <div class="stat-value" style="color: var(--success);">{{ stats.present }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Vắng (Có phép)</div>
-                <div class="stat-value" style="color: var(--warning);">{{ stats.excused or 0 }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Vắng (K.Phép)</div>
-                <div class="stat-value" style="color: var(--danger);">{{ stats.unexcused or 0 }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Tỉ lệ tham gia</div>
-                <div class="stat-value" style="color: var(--warning);">
-                    {{ ((stats.present / stats.total) * 100)|round(1) if stats.total > 0 else 0 }}%
+        {% for sess in report %}
+        <div class="session-report-block" style="margin-bottom: 40px;">
+            <h3 style="color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                🕒 Ca học: {{ sess.info }}
+                <span style="font-size: 0.8rem; font-weight: normal; background: #e2e8f0; padding: 2px 8px; border-radius: 10px; color: #475569;">
+                    ID: {{ sess.session_id }}
+                </span>
+            </h3>
+
+            <!-- Thống kê nhanh cho Ca học này -->
+            <div class="stats-grid" style="margin-bottom: 15px;">
+                <div class="stat-card">
+                    <div class="stat-label">Sĩ số</div>
+                    <div class="stat-value">{{ sess.stats.total }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Có mặt</div>
+                    <div class="stat-value" style="color: var(--success);">{{ sess.stats.present }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Vắng</div>
+                    <div class="stat-value" style="color: var(--danger);">{{ sess.stats.unexcused }}</div>
                 </div>
             </div>
-        </div>
 
-        <!-- Bảng chi tiết -->
-        <div class="table-wrapper">
-            <div style="padding: 20px; border-bottom: 1px solid #edf2f7; background: #fff; font-weight: 700;">
-                Chi tiết điểm danh: {{ current_class_name }} ({{ selected_date }})
+            <!-- Bảng chi tiết cho Ca học này -->
+            <div class="table-wrapper">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>MSSV</th>
+                            <th>HỌ VÀ TÊN</th>
+                            <th>GIỜ VÀO</th>
+                            <th>GIỜ RA</th>
+                            <th>TRẠNG THÁI</th>
+                            <th style="text-align: center;">ẢNH VÀO</th>
+                            <th style="text-align: center;">ẢNH RA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in sess.students %}
+                        <tr>
+                            <td style="font-family: monospace; font-weight: 600;">{{ r.id }}</td>
+                            <td><strong>{{ r.name }}</strong></td>
+                            <td>{{ r.in_time or '-' }}</td>
+                            <td>{{ r.out_time or '-' }}</td>
+                            <td>
+                                <span class="status-badge {{ r.status|lower|replace(' ', '-')|replace('(', '')|replace(')', '') }}">
+                                    {{ r.status }}
+                                </span>
+                            </td>
+                            <td style="text-align: center;">
+                                {% if r.in_image %}
+                                <img src="{{ url_for('attendance.serve_image', filename=r.in_image) }}" class="snapshot-img" alt="In Proof">
+                                {% else %}
+                                <small style="color: #cbd5e0;">N/A</small>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                {% if r.out_image %}
+                                <img src="{{ url_for('attendance.serve_image', filename=r.out_image) }}" class="snapshot-img" alt="Out Proof">
+                                {% else %}
+                                <small style="color: #cbd5e0;">N/A</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-            <table class="attendance-table">
-                <thead>
-                    <tr>
-                        <th>MSSV</th>
-                        <th>HỌ VÀ TÊN</th>
-                        <th>GIỜ VÀO</th>
-                        <th>GIỜ RA</th>
-                        <th>TRẠNG THÁI</th>
-                        <th style="text-align: center;">ẢNH VÀO</th>
-                        <th style="text-align: center;">ẢNH RA</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in report %}
-                    <tr>
-                        <td style="font-family: monospace; font-weight: 600;">{{ r.id }}</td>
-                        <td><strong>{{ r.name }}</strong></td>
-                        <td>{{ r.in_time or '-' }}</td>
-                        <td>{{ r.out_time or '-' }}</td>
-                        <td>
-                            <span class="status-badge {{ r.status|lower|replace(' ', '-')|replace('(', '')|replace(')', '') }}">
-                                {{ r.status }}
-                            </span>
-                        </td>
-                        <td style="text-align: center;">
-                            {% if r.in_image %}
-                            <img src="{{ url_for('attendance.serve_image', filename=r.in_image) }}" class="snapshot-img" alt="In Proof">
-                            {% else %}
-                            <small style="color: #cbd5e0;">N/A</small>
-                            {% endif %}
-                        </td>
-                        <td style="text-align: center;">
-                            {% if r.out_image %}
-                            <img src="{{ url_for('attendance.serve_image', filename=r.out_image) }}" class="snapshot-img" alt="Out Proof">
-                            {% else %}
-                            <small style="color: #cbd5e0;">N/A</small>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
+        {% endfor %}
     </div>
     {% else %}
     <div class="card" style="text-align: center; padding: 100px 20px; color: #a0aec0;">

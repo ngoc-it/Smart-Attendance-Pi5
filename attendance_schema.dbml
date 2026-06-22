@@ -1,0 +1,129 @@
+// Sơ đồ cơ sở dữ liệu SmartAttendance
+// Dán nội dung này vào trang https://dbdiagram.io
+
+Table users {
+  id integer [primary key]
+  username varchar
+  password varchar
+  role varchar
+  full_name varchar
+  email varchar
+  department_id integer [note: 'Liên kết tới bảng departments']
+}
+
+Table departments {
+  id integer [primary key]
+  name varchar
+}
+
+Table majors {
+  id integer [primary key]
+  name varchar
+  department_id integer
+}
+
+Table classes {
+  id integer [primary key]
+  name varchar
+  major_id integer
+  semester_id integer
+  teacher_id integer
+}
+
+Table semesters {
+  id integer [primary key]
+  name varchar
+  start_date date
+  end_date date
+  is_current boolean
+}
+
+Table students {
+  id varchar [primary key]
+  name varchar
+  dob date
+  student_class varchar
+  status varchar
+  last_seen timestamp
+}
+
+Table class_students {
+  class_id integer
+  student_id varchar
+}
+
+Table rooms {
+  id integer [primary key]
+  name varchar
+  capacity integer
+  has_camera boolean
+}
+
+Table schedules {
+  id integer [primary key]
+  class_id integer
+  weekday integer [note: '2-8 (Thứ 2 - Chủ Nhật)']
+  start_period_id integer
+  num_periods integer
+  room_id integer
+}
+
+Table class_sessions {
+  id integer [primary key]
+  class_id integer
+  session_date date
+  start_time time
+  end_time time
+  room_id integer
+  status varchar [note: 'SCHEDULED, COMPLETED, HOLIDAY']
+}
+
+Table attendance_logs {
+  id integer [primary key]
+  student_id varchar
+  name varchar
+  date date
+  time time
+  status varchar
+  image text
+  room_id integer
+  class_id integer
+}
+
+Table periods {
+  id integer [primary key]
+  name varchar
+  start_time time
+  end_time time
+}
+
+Table makeup_requests {
+  id integer [primary key]
+  class_id integer
+  user_id integer
+  requested_date date
+  start_period_id integer
+  num_periods integer
+  room_id integer
+  reason text
+  status varchar [note: 'PENDING, APPROVED, REJECTED']
+}
+
+// Định nghĩa quan hệ (Foreign Keys)
+Ref: users.department_id > departments.id
+Ref: majors.department_id > departments.id
+Ref: classes.major_id > majors.id
+Ref: classes.semester_id > semesters.id
+Ref: classes.teacher_id > users.id
+Ref: class_students.class_id > classes.id
+Ref: class_students.student_id > students.id
+Ref: schedules.class_id > classes.id
+Ref: schedules.room_id > rooms.id
+Ref: class_sessions.class_id > classes.id
+Ref: class_sessions.room_id > rooms.id
+Ref: attendance_logs.student_id > students.id
+Ref: attendance_logs.class_id > classes.id
+Ref: attendance_logs.room_id > rooms.id
+Ref: makeup_requests.class_id > classes.id
+Ref: makeup_requests.user_id > users.id
+Ref: makeup_requests.room_id > rooms.id

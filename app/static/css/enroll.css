@@ -1,69 +1,105 @@
-/* === ENROLL PAGE STYLES === */
+/* === ENROLL PAGE STYLES - PREMIUM MODERN UPGRADE === */
+
 .enroll-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.2fr 1fr;
     gap: 30px;
+    align-items: start;
 }
 
 /* Custom Styled Controls */
 .form-control {
-    padding: 10px 15px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    color: #2d3748;
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    color: #1a202c;
     background: #fff;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     outline: none;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .form-control:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+    box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+    background: #fff;
 }
 
 select.form-control {
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234a5568'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234361ee'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
+    background-position: right 16px center;
     background-size: 16px;
-    padding-right: 40px;
+    padding-right: 45px;
 }
 
-/* Nút Chọn nạp */
+/* Nút Chọn nạp sinh viên */
 .btn-select-student {
-    padding: 6px 14px;
-    background: #ebf4ff;
+    padding: 8px 16px;
+    background: rgba(67, 97, 238, 0.08);
     color: var(--primary);
-    border: 1px solid #bee3f8;
-    border-radius: 6px;
-    font-size: 0.8rem;
+    border: 1px solid rgba(67, 97, 238, 0.2);
+    border-radius: 8px;
+    font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.25s ease;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
 }
 
 .btn-select-student:hover {
     background: var(--primary);
     color: white;
     border-color: var(--primary);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(66, 153, 225, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.25);
 }
 
+/* Camera Preview & Glowing Borders */
 .camera-preview {
-    background: #000;
-    border-radius: 12px;
+    background: #090d16;
+    border-radius: 16px;
     overflow: hidden;
     position: relative;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
     aspect-ratio: 4/3;
+    border: 3px solid rgba(67, 97, 238, 0.15);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Các trạng thái viền phát sáng của Camera */
+.camera-preview.status-scanning {
+    border-color: var(--primary);
+    box-shadow: 0 0 25px rgba(67, 97, 238, 0.4), inset 0 0 20px rgba(67, 97, 238, 0.2);
+    animation: pulse-scanning 2s infinite alternate;
+}
+
+.camera-preview.status-success {
+    border-color: var(--success);
+    box-shadow: 0 0 35px rgba(46, 204, 113, 0.5), inset 0 0 20px rgba(46, 204, 113, 0.25);
+}
+
+.camera-preview.status-error {
+    border-color: var(--danger);
+    box-shadow: 0 0 35px rgba(231, 76, 60, 0.5), inset 0 0 20px rgba(231, 76, 60, 0.25);
+    animation: shake 0.4s ease-in-out;
+}
+
+@keyframes pulse-scanning {
+    0% { box-shadow: 0 0 15px rgba(67, 97, 238, 0.3), inset 0 0 10px rgba(67, 97, 238, 0.1); }
+    100% { box-shadow: 0 0 30px rgba(67, 97, 238, 0.6), inset 0 0 25px rgba(67, 97, 238, 0.35); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
 }
 
 .camera-preview img {
@@ -72,78 +108,360 @@ select.form-control {
     object-fit: cover;
 }
 
+/* Lưới căn chỉnh khuôn mặt giả lập (Target Mesh) */
+.camera-mesh {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: 
+        radial-gradient(circle, transparent 35%, rgba(0,0,0,0.4) 75%),
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 100% 100%, 20px 20px, 20px 20px;
+    opacity: 0.8;
+}
+
+.camera-target-box {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50%;
+    height: 60%;
+    border: 1px dashed rgba(255, 255, 255, 0.25);
+    border-radius: 100px; /* Bầu dục căn mặt */
+    pointer-events: none;
+}
+
+.camera-target-box::before {
+    content: '';
+    position: absolute;
+    top: -5px; left: -5px; width: 15px; height: 15px;
+    border-top: 3px solid var(--primary);
+    border-left: 3px solid var(--primary);
+}
+.camera-target-box::after {
+    content: '';
+    position: absolute;
+    bottom: -5px; right: -5px; width: 15px; height: 15px;
+    border-bottom: 3px solid var(--primary);
+    border-right: 3px solid var(--primary);
+}
+
+/* Đường quét Laser quét khuôn mặt sinh động */
 .scan-line {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    height: 2px;
-    background: var(--primary);
-    box-shadow: 0 0 15px var(--primary);
-    animation: scan 2s linear infinite;
+    height: 12px;
+    background: linear-gradient(180deg, 
+        rgba(67, 97, 238, 0) 0%, 
+        rgba(67, 97, 238, 0.6) 50%, 
+        var(--primary) 90%, 
+        rgba(67, 97, 238, 0) 100%);
+    box-shadow: 0 2px 12px var(--primary);
+    animation: scan 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     display: none;
+    pointer-events: none;
+    z-index: 5;
 }
 
 @keyframes scan {
-    0% { top: 0; }
-    100% { top: 100%; }
+    0% { top: 0%; opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { top: 98%; opacity: 0.3; }
 }
 
+/* Progress and status message styling */
 .progress-container {
-    margin-top: 20px;
+    margin-top: 25px;
     display: none;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
 }
 
 .progress-bar-wrapper {
     width: 100%;
-    height: 8px;
+    height: 10px;
     background: #edf2f7;
-    border-radius: 4px;
+    border-radius: 6px;
     overflow: hidden;
+    position: relative;
 }
 
+/* Thanh Tiến Độ Shimmer Effect */
 .progress-bar {
     width: 0%;
     height: 100%;
-    background: var(--primary);
-    transition: width 0.3s ease;
+    background: linear-gradient(90deg, #4361ee, #4cc9f0, #4361ee);
+    background-size: 200% 100%;
+    border-radius: 6px;
+    transition: width 0.4s cubic-bezier(0.1, 0.8, 0.25, 1);
+    position: relative;
+    animation: shimmer-bar 1.5s infinite linear;
+}
+
+@keyframes shimmer-bar {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
 .status-msg {
-    margin-top: 10px;
-    font-size: 0.9rem;
+    margin-top: 12px;
+    font-size: 0.95rem;
     font-weight: 600;
     text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-count {
+    background: var(--primary);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
 }
 
 .msg-info { color: var(--primary); }
 .msg-success { color: var(--success); }
 .msg-error { color: var(--danger); }
 
-@media (max-width: 900px) {
-    .enroll-container {
-        grid-template-columns: 1fr;
-    }
+/* STEP BY STEP PROGRESS UI */
+.steps-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card-bg);
+    padding: 18px 24px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    margin-bottom: 25px;
+    position: relative;
+    overflow: hidden;
 }
 
+.steps-container::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: #e2e8f0;
+    z-index: 1;
+    transform: translateY(-50%);
+}
+
+.step-item {
+    position: relative;
+    z-index: 2;
+    background: var(--card-bg);
+    padding: 0 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.step-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #718096;
+    border: 3px solid var(--card-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.step-text {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #718096;
+    transition: all 0.3s;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Các trạng thái của bước */
+.step-item.active .step-icon {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 0 12px rgba(67, 97, 238, 0.4);
+    transform: scale(1.1);
+}
+
+.step-item.active .step-text {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.step-item.completed .step-icon {
+    background: var(--success);
+    color: white;
+}
+
+.step-item.completed .step-text {
+    color: var(--success);
+}
+
+/* Glassmorphic Success Overlay */
+.success-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    animation: fade-in 0.3s ease-out;
+}
+
+.success-card {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 24px;
+    padding: 40px;
+    width: 450px;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    animation: scale-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes scale-up {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.success-icon-wrapper {
+    margin-bottom: 20px;
+}
+
+.success-animated-icon {
+    font-size: 5rem;
+    color: var(--success);
+    filter: drop-shadow(0 4px 10px rgba(46, 204, 113, 0.3));
+    animation: pop-icon 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes pop-icon {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+.success-card h2 {
+    font-size: 1.6rem;
+    color: #1e293b;
+    margin-bottom: 12px;
+    font-weight: 800;
+}
+
+.success-student-info {
+    font-size: 1.1rem;
+    color: #475569;
+    margin-bottom: 8px;
+}
+
+.success-detail {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-bottom: 25px;
+}
+
+.countdown-box {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 15px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.countdown-number {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--success);
+    z-index: 10;
+}
+
+.countdown-spinner {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 4px solid rgba(46, 204, 113, 0.15);
+    border-top: 4px solid var(--success);
+    border-radius: 50%;
+    animation: spin-countdown 1s linear infinite;
+}
+
+@keyframes spin-countdown {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.countdown-text {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-bottom: 10px;
+}
+
+/* Pagination styles */
 .page-link {
-    padding: 5px 12px;
+    padding: 8px 16px;
     border: 1px solid #e2e8f0;
-    border-radius: 6px;
+    border-radius: 8px;
     text-decoration: none;
     color: #4a5568;
-    font-size: 0.85rem;
-    transition: all 0.2s;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.25s ease;
 }
 
 .page-link:hover {
-    background: #f7fafc;
+    background: #f1f5f9;
     border-color: #cbd5e0;
+    color: var(--primary);
 }
 
 .page-link.active {
     background: var(--primary);
     color: white;
     border-color: var(--primary);
-    font-weight: 600;
+    box-shadow: 0 4px 8px rgba(67, 97, 238, 0.2);
+}
+
+/* Responsive grid adjustments */
+@media (max-width: 992px) {
+    .enroll-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
 }

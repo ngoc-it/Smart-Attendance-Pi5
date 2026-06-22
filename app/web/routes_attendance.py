@@ -86,7 +86,7 @@ def reports():
         # Giảng viên chỉ thấy lớp mình được gán
         classes = db.get_user_classes(user_id)
     
-    detailed_report = []
+    sessions_report = []
     stats = None
     current_class_name = ""
     
@@ -105,32 +105,31 @@ def reports():
                 if class_name_legacy not in allowed_names:
                     return "Bạn không có quyền xem lớp này", 403
 
-        detailed_report = db.get_detailed_attendance(date_str, target_class)
+        sessions_report = db.get_detailed_attendance(date_str, target_class)
+        
+        # Tính toán stats cho từng session
+        for sess in sessions_report:
+            total = len(sess['students'])
+            present = len([s for s in sess['students'] if s['status'] in ['Hoàn thành', 'Đi trễ', 'Có mặt', 'Chưa Checkout']])
+            excused = len([s for s in sess['students'] if 'Có phép' in s['status']])
+            unexcused = total - present - excused
+            
+            sess['stats'] = {
+                "total": total,
+                "present": present,
+                "excused": excused,
+                "unexcused": unexcused
+            }
         
         # Tìm tên lớp để hiển thị
         for cls in classes:
             if (class_id and cls[0] == class_id) or (class_name_legacy and cls[1] == class_name_legacy):
                 current_class_name = f"[{cls[2]}] {cls[1]}" if cls[2] else cls[1]
-                if not class_id: class_id = cls[0] # Cập nhật class_id để UI đồng bộ
+                if not class_id: class_id = cls[0]
                 break
-        
-        # Thống kê nhanh cho lớp được chọn
-        total = len(detailed_report)
-        present = len([r for r in detailed_report if r['status'] in ['Hoàn thành', 'Đi trễ', 'Có mặt', 'Chưa Checkout']])
-        excused = len([r for r in detailed_report if 'Có phép' in r['status']])
-        unexcused = len([r for r in detailed_report if 'Không phép' in r['status'] or r['status'] == 'Vắng'])
-        
-        stats = {
-            "total": total,
-            "present": present,
-            "excused": excused,
-            "unexcused": unexcused,
-            "absent": total - present
-        }
     
     return render_template('reports.html', 
-                           stats=stats, 
-                           report=detailed_report, 
+                           report=sessions_report, 
                            classes=classes,
                            selected_date=date_str,
                            selected_class_id=class_id,
@@ -152,23 +151,36 @@ def export_excel():
     if not target_class:
         return "Vui lòng chọn lớp để xuất báo cáo", 400
         
-    data = db.get_detailed_attendance(date_str, target_class)
+    sessions_data = db.get_detailed_attendance(date_str, target_class)
     
-    # Chuyển đổi dữ liệu sang DataFrame
-    df = pd.DataFrame(data)
+    # Chuyển đổi dữ liệu sang danh sách phẳng để tạo DataFrame
+    flat_data = []
+    for sess in sessions_data:
+        info = sess['info']
+        for s in sess['students']:
+            row = s.copy()
+            row['Ca học'] = info
+            flat_data.append(row)
+            
+    if not flat_data:
+        return "Không có dữ liệu điểm danh để xuất báo cáo", 404
+        
+    df = pd.DataFrame(flat_data)
     
     # Việt hóa tiêu đề cột
-    df = df.rename(columns={
+    column_mapping = {
         "id": "MSSV",
         "name": "Họ và Tên",
         "in_time": "Giờ vào",
         "out_time": "Giờ ra",
-        "status": "Trạng thái"
-    })
+        "status": "Trạng thái",
+        "Ca học": "Ca học"
+    }
+    df = df.rename(columns=column_mapping)
     
-    # Bỏ cột ảnh khi xuất excel
-    if 'image' in df.columns:
-        df = df.drop(columns=['image'])
+    # Sắp xếp lại thứ tự cột cho đẹp (chỉ lấy các cột tồn tại)
+    cols = ["Ca học", "MSSV", "Họ và Tên", "Giờ vào", "Giờ ra", "Trạng thái"]
+    df = df[[c for c in cols if c in df.columns]]
         
     # Tạo file Excel trong bộ nhớ
     output = io.BytesIO()
@@ -213,20 +225,29 @@ def export_summary_excel():
         }
         
         absent_count = 0
-        total_sessions = len(dates)
+        taught_sessions = 0
         
         for i, d in enumerate(dates):
             status = matrix[d][s['id']]
-            # Header format: Buổi X (DD/MM)
-            date_obj = datetime.strptime(d, "%Y-%m-%d")
-            header = f"Buổi {i+1}\n({date_obj.strftime('%d/%m')})"
-            row[header] = status or "K" # Mặc định là vắng nếu không có log
-            if status in ["K", "P", ""]:
-                absent_count += 1
+            # Header format
+            try:
+                date_part = d.split('\n')[0]
+                date_obj = datetime.strptime(date_part, "%Y-%m-%d")
+                header = f"Buổi {i+1}\n({date_obj.strftime('%d/%m')})"
+            except:
+                header = d
+            
+            row[header] = status or "K"
+            
+            # Chỉ tính toán thống kê nếu buổi học ĐÃ diễn ra (status khác "-")
+            if status != "-":
+                taught_sessions += 1
+                if status in ["K", "P", "", "Vắng"] or "Vắng" in str(status):
+                    absent_count += 1
                 
-        row["Tổng buổi"] = total_sessions
-        row["Vắng"] = absent_count
-        row["% Nghỉ"] = round((absent_count / total_sessions * 100), 1) if total_sessions > 0 else 0
+        row["Tổng buổi dạy"] = taught_sessions
+        row["Số buổi vắng"] = absent_count
+        row["% Nghỉ"] = round((absent_count / taught_sessions * 100), 1) if taught_sessions > 0 else 0
         data.append(row)
         
     df = pd.DataFrame(data)
@@ -424,3 +445,33 @@ def attendance_manual():
 def get_sessions(class_id):
     sessions = db.get_editable_sessions(class_id)
     return jsonify(sessions)
+
+# ---- MAKE-UP CLASS ROUTES ----
+@attendance_bp.route('/api/makeup/available_slots', methods=['GET'])
+@lecturer_required
+def get_available_slots():
+    date_str = request.args.get('date')
+    num_periods = request.args.get('num_periods', 2, type=int)
+    if not date_str:
+        return jsonify([])
+    slots = db.find_available_slots(date_str, num_periods)
+    return jsonify(slots)
+
+@attendance_bp.route('/api/makeup/request', methods=['POST'])
+@lecturer_required
+def submit_makeup_request():
+    data = request.json
+    user_id = session.get('user_id')
+    success = db.create_makeup_request(
+        class_id=data['class_id'],
+        user_id=user_id,
+        date_str=data['date'],
+        start_period=data['start_period_id'],
+        num_periods=data['num_periods'],
+        room_id=data['room_id'],
+        reason=data.get('reason', '')
+    )
+    if success:
+        return jsonify({"status": "success", "message": "Đã gửi yêu cầu dạy bù, vui lòng chờ Admin phê duyệt."})
+    return jsonify({"status": "error", "message": "Lỗi gửi yêu cầu"}), 500
+

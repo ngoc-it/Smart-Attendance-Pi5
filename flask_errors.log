@@ -1,0 +1,223 @@
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.20.10.2:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:06] "[32mGET / HTTP/1.1[0m" 302 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:06] "GET /login HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:06] "GET /static/images/mtu_logo.png HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:06] "GET /static/css/auth.css HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:07] "GET /static/images/mtu_bg.jpg HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:07] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:15] "[32mPOST /login HTTP/1.1[0m" 302 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:15] "GET /admin/ HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:15] "GET /static/js/system.js HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:15] "GET /static/css/style.css HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:15] "GET /static/css/academic.css HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:16] "GET /static/css/system.css HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:18] "GET /admin/academic/ HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:18] "GET /static/js/academic.js HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:18] "[36mGET /static/css/academic.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:18] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:20] "GET /admin/academic/makeup/pending HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:28] "GET /admin/academic/class/9/schedules HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:28] "GET /admin/academic/class/9/sessions HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:39] "POST /admin/academic/class/9/sessions/preview HTTP/1.1" 200 -
+ERROR:app:Exception on /admin/academic/class/9/schedules [POST]
+Traceback (most recent call last):
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/nkn0901/SmartAttendance/app/core/auth_utils.py", line 17, in decorated_function
+    return f(*args, **kwargs)
+  File "/home/nkn0901/SmartAttendance/app/web/routes_academic.py", line 219, in save_class_schedules
+    valid, msg = db.check_schedule_conflict(
+    ^^^^^^^^^^
+TypeError: cannot unpack non-iterable NoneType object
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:45:40] "[35m[1mPOST /admin/academic/class/9/schedules HTTP/1.1[0m" 500 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:02] "[32mGET / HTTP/1.1[0m" 302 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:02] "GET /admin/ HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:02] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:02] "[36mGET /static/css/system.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:02] "[36mGET /static/css/academic.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:02] "[36mGET /static/js/system.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:05] "GET /admin/academic/ HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:05] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:05] "[36mGET /static/js/academic.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:05] "[36mGET /static/css/academic.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:12] "GET /admin/academic/class/7/sessions HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:12] "GET /admin/academic/class/7/schedules HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:27] "POST /admin/academic/class/7/sessions/preview HTTP/1.1" 200 -
+ERROR:app:Exception on /admin/academic/class/7/schedules [POST]
+Traceback (most recent call last):
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/nkn0901/SmartAttendance/app/core/auth_utils.py", line 17, in decorated_function
+    return f(*args, **kwargs)
+  File "/home/nkn0901/SmartAttendance/app/web/routes_academic.py", line 219, in save_class_schedules
+    valid, msg = db.check_schedule_conflict(
+    ^^^^^^^^^^
+TypeError: cannot unpack non-iterable NoneType object
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:29] "[35m[1mPOST /admin/academic/class/7/schedules HTTP/1.1[0m" 500 -
+ERROR:app:Exception on /admin/academic/class/7/schedules [POST]
+Traceback (most recent call last):
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/nkn0901/SmartAttendance/app/core/auth_utils.py", line 17, in decorated_function
+    return f(*args, **kwargs)
+  File "/home/nkn0901/SmartAttendance/app/web/routes_academic.py", line 219, in save_class_schedules
+    valid, msg = db.check_schedule_conflict(
+    ^^^^^^^^^^
+TypeError: cannot unpack non-iterable NoneType object
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:30] "[35m[1mPOST /admin/academic/class/7/schedules HTTP/1.1[0m" 500 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:41] "POST /admin/academic/class/7/sessions/preview HTTP/1.1" 200 -
+ERROR:app:Exception on /admin/academic/class/7/schedules [POST]
+Traceback (most recent call last):
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/nkn0901/SmartAttendance/app/core/auth_utils.py", line 17, in decorated_function
+    return f(*args, **kwargs)
+  File "/home/nkn0901/SmartAttendance/app/web/routes_academic.py", line 219, in save_class_schedules
+    valid, msg = db.check_schedule_conflict(
+    ^^^^^^^^^^
+TypeError: cannot unpack non-iterable NoneType object
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:42] "[35m[1mPOST /admin/academic/class/7/schedules HTTP/1.1[0m" 500 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:44] "GET /admin/academic/ HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:44] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:44] "[36mGET /static/css/academic.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:127.0.0.1 - - [12/May/2026 10:46:44] "[36mGET /static/js/academic.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.20.10.2:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.20.10.2:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:05] "[32mGET / HTTP/1.1[0m" 302 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:05] "GET /login HTTP/1.1" 200 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:05] "[36mGET /static/css/auth.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:05] "[36mGET /static/images/mtu_logo.png HTTP/1.1[0m" 304 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:05] "[36mGET /static/images/mtu_bg.jpg HTTP/1.1[0m" 304 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:05] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:12] "[32mPOST /login HTTP/1.1[0m" 302 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:12] "GET /admin/ HTTP/1.1" 200 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:12] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:12] "[36mGET /static/css/academic.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:12] "[36mGET /static/css/system.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:12] "[36mGET /static/js/system.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:14] "GET /admin/academic/ HTTP/1.1" 200 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:14] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:14] "[36mGET /static/css/academic.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:14] "[36mGET /static/js/academic.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:18] "GET /admin/academic/class/9/schedules HTTP/1.1" 200 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:18] "GET /admin/academic/class/9/sessions HTTP/1.1" 200 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:30] "POST /admin/academic/class/9/sessions/preview HTTP/1.1" 200 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:32] "POST /admin/academic/class/9/schedules HTTP/1.1" 200 -
+INFO:werkzeug:172.20.10.3 - - [12/May/2026 10:50:33] "GET /admin/academic/class/9/sessions HTTP/1.1" 200 -
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.20.10.2:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.20.10.2:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.20.10.2:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.47:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:55:45] "[32mGET / HTTP/1.1[0m" 302 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:55:45] "GET /login HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:55:45] "GET /static/css/auth.css HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:55:45] "GET /static/images/mtu_logo.png HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:55:45] "GET /static/images/mtu_bg.jpg HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:55:45] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:05] "[32mPOST /login HTTP/1.1[0m" 302 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:05] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:05] "GET /static/css/style.css HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:05] "GET /static/css/lecturer.css HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:05] "GET /static/js/lecturer.js HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:11] "GET /?class_id=9 HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:11] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:11] "[36mGET /static/css/lecturer.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:11] "[36mGET /static/js/lecturer.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:11] "GET /video_feed HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:16] "GET /video_feed?t=1779036976385 HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:19] "GET /?class_id=9&page=2 HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:19] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:19] "[36mGET /static/css/lecturer.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:19] "[36mGET /static/js/lecturer.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:19] "GET /video_feed HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:21] "GET /enroll HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:21] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:21] "GET /static/css/enroll.css HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:21] "GET /static/js/enroll.js HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:21] "GET /video_feed HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:25] "GET /enroll?class_id=9 HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:25] "[36mGET /static/css/enroll.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:25] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:25] "[36mGET /static/js/enroll.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [17/May/2026 23:56:25] "GET /video_feed HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [18/May/2026 00:01:55] "GET /enroll?class_id=9 HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [18/May/2026 00:01:55] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [18/May/2026 00:01:55] "GET /static/css/enroll.css HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [18/May/2026 00:01:55] "GET /static/js/enroll.js HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [18/May/2026 00:01:55] "GET /video_feed HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [18/May/2026 00:01:57] "GET /enroll?class_id=9 HTTP/1.1" 200 -
+INFO:werkzeug:192.168.1.36 - - [18/May/2026 00:01:57] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [18/May/2026 00:01:57] "[36mGET /static/css/enroll.css HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [18/May/2026 00:01:57] "[36mGET /static/js/enroll.js HTTP/1.1[0m" 304 -
+INFO:werkzeug:192.168.1.36 - - [18/May/2026 00:01:57] "GET /video_feed HTTP/1.1" 200 -
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.47:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.47:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.47:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
