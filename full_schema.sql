@@ -49,7 +49,8 @@ CREATE TABLE students (
     dob TEXT,
     student_class TEXT,
     status TEXT,
-    last_seen TEXT
+    last_seen TEXT,
+    password TEXT
 );
 
 CREATE TABLE class_students (

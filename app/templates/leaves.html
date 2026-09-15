@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Duyệt phép - Smart Attendance{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/lecturer.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <div>
+            <h2 style="margin:0; font-family: var(--font-heading); font-weight: 700; color: var(--text-main);"><i class="fa-solid fa-envelope-open-text" style="color: var(--primary); margin-right: 8px;"></i> Duyệt đơn xin nghỉ phép</h2>
+            <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 0.85rem;">Xem và phê duyệt các đơn xin nghỉ phép của sinh viên</p>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Ngày hiện tại: <strong>{{ now_date }}</strong></div>
+        </div>
+    </div>
+
+    <div class="card" style="padding: 24px; max-width: 800px; margin: 0 auto;" id="leave-requests-list">
+        {% set ns = namespace(has_pending=false) %}
+        {% for lr in leave_requests %}
+        {% if lr[5] == 'Pending' or lr[5] == 'pending' %}
+        {% set ns.has_pending = true %}
+        <div id="leave-req-{{ lr[0] }}" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; transition: all 0.3s ease;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                <div>
+                    <h4 style="margin: 0; font-size: 1.05rem; color: #1e293b; font-weight: 600;">{{ lr[7] }}</h4>
+                    <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">Mã số sinh viên: <strong>{{ lr[1] }}</strong></div>
+                </div>
+                <span style="background: #ebf5ff; color: #1e40af; font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 6px;">
+                    Lớp: {{ lr[8] }}
+                </span>
+            </div>
+            <div style="font-size: 0.85rem; color: #334155; margin-bottom: 15px; border-top: 1px dashed #e2e8f0; padding-top: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                    <i class="far fa-calendar-alt" style="color: #64748b; width: 16px;"></i> 
+                    <span>Ngày nghỉ: <strong>{{ lr[3] }}</strong></span>
+                </div>
+                <div style="display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;">
+                    <i class="far fa-file-alt" style="color: #64748b; width: 16px; margin-top: 2px;"></i> 
+                    <span>Lý do nghỉ: <span style="font-style: italic; color: #475569;">"{{ lr[4] }}"</span></span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #f1f5f9; padding-top: 12px;">
+                <button onclick="updateLeaveStatus({{ lr[0] }}, 'Rejected')" class="btn-action-subtle" style="padding: 6px 16px; font-size: 0.8rem; color: #dc2626; border-color: #fca5a5; background: #fff5f5; cursor: pointer;">
+                    Từ chối
+                </button>
+                <button onclick="updateLeaveStatus({{ lr[0] }}, 'Approved')" class="btn-action-subtle" style="padding: 6px 16px; font-size: 0.8rem; color: #16a34a; border-color: #86efac; background: #f0fdf4; cursor: pointer;">
+                    Duyệt phép
+                </button>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        {% if not ns.has_pending %}
+        <div style="padding: 40px; text-align: center; color: #64748b; font-size: 1rem;">
+            <i class="fa-solid fa-clipboard-check" style="font-size: 2.5rem; color: #cbd5e1; margin-bottom: 15px; display: block;"></i>
+            Không có đơn xin nghỉ phép nào cần duyệt
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/lecturer.js') }}"></script>
+{% endblock %}

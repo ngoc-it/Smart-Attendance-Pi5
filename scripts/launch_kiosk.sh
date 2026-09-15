@@ -24,4 +24,4 @@ fi
 # --disable-infobars: Hide the "Chrome is being controlled" bar
 # --noerrdialogs: Hide crash dialogs
 echo "SmartAttendance: Launching Kiosk UI..."
-/usr/bin/chromium --kiosk --incognito --disable-infobars --noerrdialogs --disable-session-crashed-bubble http://127.0.0.1:5000/kiosk
+/usr/bin/chromium --kiosk --password-store=basic --incognito --disable-infobars --noerrdialogs --disable-session-crashed-bubble http://127.0.0.1:5000/kiosk

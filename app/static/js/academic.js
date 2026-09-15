@@ -4,6 +4,29 @@ const BASE = '/admin/academic';
 let modalAction = null, modalId = null;
 let currentClassId = null, currentSchedules = [];
 
+function formatDateVN(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return '';
+    const year = parts[0];
+    const month = parseInt(parts[1]);
+    const day = parseInt(parts[2]);
+    return `Ngày ${day} tháng ${month} năm ${year}`;
+}
+
+function updateDatePreview(inputId, previewId) {
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(previewId);
+    if (input && preview) {
+        const val = input.value;
+        if (val) {
+            preview.innerText = '👉 Xác nhận: ' + formatDateVN(val);
+        } else {
+            preview.innerText = '';
+        }
+    }
+}
+
 function getStaticData(id) {
     const el = document.getElementById(id);
     return el ? JSON.parse(el.textContent) : [];
@@ -34,8 +57,20 @@ function showModal(type, id = null, data = {}) {
     if (type === 'semester') {
         title.textContent = id ? 'Sửa Học kỳ' : 'Thêm Học kỳ';
         body.innerHTML = `<div class="form-group"><label>Tên Học kỳ</label><input type="text" id="m-name" value="${data.name || ''}" placeholder="VD: HK1 2025-2026" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
-        <div class="form-group"><label>Ngày bắt đầu</label><input type="date" id="m-start" value="${data.start || ''}" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
-        <div class="form-group"><label>Ngày kết thúc</label><input type="date" id="m-end" value="${data.end || ''}" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>`;
+        <div class="form-group">
+            <label>Ngày bắt đầu</label>
+            <input type="date" id="m-start" value="${data.start || ''}" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;" oninput="updateDatePreview('m-start', 'start-preview')">
+            <span id="start-preview" style="font-size: 13px; color: #4338ca; font-weight: bold; margin-top: 4px; display: block;"></span>
+        </div>
+        <div class="form-group">
+            <label>Ngày kết thúc</label>
+            <input type="date" id="m-end" value="${data.end || ''}" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;" oninput="updateDatePreview('m-end', 'end-preview')">
+            <span id="end-preview" style="font-size: 13px; color: #4338ca; font-weight: bold; margin-top: 4px; display: block;"></span>
+        </div>`;
+        setTimeout(() => {
+            updateDatePreview('m-start', 'start-preview');
+            updateDatePreview('m-end', 'end-preview');
+        }, 50);
     } else if (type === 'room') {
         title.textContent = id ? 'Sửa Phòng học' : 'Thêm Phòng học';
         body.innerHTML = `<div class="form-group"><label>Tên phòng</label><input type="text" id="m-name" value="${data.name || ''}" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
@@ -45,9 +80,21 @@ function showModal(type, id = null, data = {}) {
         title.textContent = 'Thêm Ngày nghỉ / Lễ';
         body.innerHTML = `<div class="form-group"><label>Tên ngày lễ</label><input type="text" id="m-name" placeholder="VD: Nghỉ Tết" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-            <div class="form-group"><label>Từ ngày</label><input type="date" id="m-date" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
-            <div class="form-group"><label>Đến ngày</label><input type="date" id="m-end-date" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;"></div>
+            <div class="form-group">
+                <label>Từ ngày</label>
+                <input type="date" id="m-date" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;" oninput="updateDatePreview('m-date', 'holiday-start-preview')">
+                <span id="holiday-start-preview" style="font-size: 13px; color: #4338ca; font-weight: bold; margin-top: 4px; display: block;"></span>
+            </div>
+            <div class="form-group">
+                <label>Đến ngày</label>
+                <input type="date" id="m-end-date" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;" oninput="updateDatePreview('m-end-date', 'holiday-end-preview')">
+                <span id="holiday-end-preview" style="font-size: 13px; color: #4338ca; font-weight: bold; margin-top: 4px; display: block;"></span>
+            </div>
         </div>`;
+        setTimeout(() => {
+            updateDatePreview('m-date', 'holiday-start-preview');
+            updateDatePreview('m-end-date', 'holiday-end-preview');
+        }, 50);
     } else if (type === 'preview_sessions') {
         title.textContent = 'Xác nhận thay đổi lịch dạy';
 
@@ -132,23 +179,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('click', function (e) {
         const target = e.target;
-        if (target.classList.contains('tab-btn')) switchTab(target.dataset.tab);
-        if (target.classList.contains('btn-add')) showModal(target.dataset.type);
-        if (target.id === 'btn-modal-cancel' || target.id === 'modal-overlay') closeModal();
+        const tabBtn = target.closest('.tab-btn');
+        if (tabBtn) switchTab(tabBtn.dataset.tab);
+        const btnAdd = target.closest('.btn-add');
+        if (btnAdd) showModal(btnAdd.dataset.type);
+
+        if (target.id === 'btn-modal-cancel') closeModal();
         if (target.id === 'btn-modal-save') saveModal();
-        const id = target.dataset.id;
-        if (target.classList.contains('btn-edit-sem')) showModal('semester', id, { name: target.dataset.name, start: target.dataset.start, end: target.dataset.end });
-        if (target.classList.contains('btn-edit-room')) showModal('room', id, { name: target.dataset.name, cap: target.dataset.cap, cam: target.dataset.cam === 'True' });
-        if (target.classList.contains('btn-del-room')) { if (confirm('Xóa phòng học này?')) apiCall(`${BASE}/room/${id}`, 'DELETE', {}, () => location.reload()); }
-        if (target.classList.contains('btn-set-current-sem')) { if (confirm('Đặt làm Học kỳ hiện tại?')) apiCall(`${BASE}/semester/${id}/set_current`, 'POST', {}, () => location.reload()); }
-        if (target.classList.contains('btn-del-sem')) { if (confirm('Xóa học kỳ này?')) apiCall(`${BASE}/semester/${id}`, 'DELETE', {}, () => location.reload()); }
+
+        const btnEditSem = target.closest('.btn-edit-sem');
+        if (btnEditSem) showModal('semester', btnEditSem.dataset.id, { name: btnEditSem.dataset.name, start: btnEditSem.dataset.start, end: btnEditSem.dataset.end });
+        
+        const btnEditRoom = target.closest('.btn-edit-room');
+        if (btnEditRoom) showModal('room', btnEditRoom.dataset.id, { name: btnEditRoom.dataset.name, cap: btnEditRoom.dataset.cap, cam: btnEditRoom.dataset.cam === 'True' });
+        
+        const btnDelRoom = target.closest('.btn-del-room');
+        if (btnDelRoom) { if (confirm('Xóa phòng học này?')) apiCall(`${BASE}/room/${btnDelRoom.dataset.id}`, 'DELETE', {}, () => location.reload()); }
+        
+        const btnSetCurrentSem = target.closest('.btn-set-current-sem');
+        if (btnSetCurrentSem) { if (confirm('Đặt làm Học kỳ hiện tại?')) apiCall(`${BASE}/semester/${btnSetCurrentSem.dataset.id}/set_current`, 'POST', {}, () => location.reload()); }
+        
+        const btnDelSem = target.closest('.btn-del-sem');
+        if (btnDelSem) { if (confirm('Xóa học kỳ này?')) apiCall(`${BASE}/semester/${btnDelSem.dataset.id}`, 'DELETE', {}, () => location.reload()); }
+        
         if (target.id === 'btn-view-schedule') openScheduleEditor();
         if (target.id === 'btn-add-sch-row') addScheduleRow();
         if (target.id === 'btn-save-schedules') saveSchedules();
-        if (target.classList.contains('btn-remove-sch')) removeSchedule(target.dataset.index);
+        
+        const btnRemoveSch = target.closest('.btn-remove-sch');
+        if (btnRemoveSch) removeSchedule(btnRemoveSch.dataset.index);
+        
         if (target.id === 'btn-recalculate-sessions') recalculateSessions();
-        if (target.classList.contains('btn-del-course')) { if (confirm('Xóa học phần này?')) apiCall(`${BASE}/course/${id}`, 'DELETE', {}, () => location.reload()); }
-        if (target.classList.contains('btn-del-holiday')) { if (confirm('Xóa ngày nghỉ này?')) apiCall(`${BASE}/holiday/${id}`, 'DELETE', {}, () => location.reload()); }
+        
+        const btnDelCourse = target.closest('.btn-del-course');
+        if (btnDelCourse) { if (confirm('Xóa học phần này?')) apiCall(`${BASE}/course/${btnDelCourse.dataset.id}`, 'DELETE', {}, () => location.reload()); }
+        
+        const btnDelHoliday = target.closest('.btn-del-holiday');
+        if (btnDelHoliday) { if (confirm('Xóa ngày nghỉ này?')) apiCall(`${BASE}/holiday/${btnDelHoliday.dataset.id}`, 'DELETE', {}, () => location.reload()); }
     });
 });
 
@@ -224,31 +291,65 @@ function renderSchedules() {
 }
 
 function loadMakeupRequests() {
-    const tbody = document.getElementById('makeup-requests-tbody');
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Đang tải danh sách...</td></tr>';
+    const tbodyPending = document.getElementById('makeup-requests-tbody');
+    const tbodyProcessed = document.getElementById('makeup-processed-tbody');
     
-    fetch(`${BASE}/makeup/pending`)
-    .then(r => r.json())
-    .then(requests => {
-        if (requests.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#888;">Chưa có yêu cầu dạy bù nào đang chờ duyệt.</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = requests.map(m => `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding:12px 10px;"><strong>${m.lecturer_name}</strong></td>
-                <td style="padding:12px 10px;">${m.class_name}</td>
-                <td style="padding:12px 10px;"><code>${m.requested_date}</code></td>
-                <td style="padding:12px 10px;">${m.period_name} - <strong>${m.room_name}</strong></td>
-                <td style="padding:12px 10px;"><small>${m.reason || '---'}</small></td>
-                <td style="padding:12px 10px; text-align:right;">
-                    <button class="btn btn-success btn-sm" onclick="handleMakeup(${m.id}, 'APPROVED')">Duyệt</button>
-                    <button class="btn btn-danger btn-sm" onclick="handleMakeup(${m.id}, 'REJECTED')">Từ chối</button>
-                </td>
-            </tr>
-        `).join('');
-    });
+    if (tbodyPending) {
+        tbodyPending.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Đang tải danh sách...</td></tr>';
+        fetch(`${BASE}/makeup/pending`)
+        .then(r => r.json())
+        .then(requests => {
+            if (requests.length === 0) {
+                tbodyPending.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#888;">Chưa có yêu cầu dạy bù nào đang chờ duyệt.</td></tr>';
+                return;
+            }
+            
+            tbodyPending.innerHTML = requests.map(m => `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding:12px 10px;"><strong>${m.lecturer_name}</strong></td>
+                    <td style="padding:12px 10px;">${m.class_name}</td>
+                    <td style="padding:12px 10px;"><code>${m.requested_date}</code></td>
+                    <td style="padding:12px 10px;">${m.period_name} - <strong>${m.room_name}</strong></td>
+                    <td style="padding:12px 10px;"><small>${m.reason || '---'}</small></td>
+                    <td style="padding:12px 10px; text-align:right;">
+                        <button class="btn btn-success btn-sm" onclick="handleMakeup(${m.id}, 'APPROVED')">Duyệt</button>
+                        <button class="btn btn-danger btn-sm" onclick="handleMakeup(${m.id}, 'REJECTED')">Từ chối</button>
+                    </td>
+                </tr>
+            `).join('');
+        });
+    }
+
+    if (tbodyProcessed) {
+        tbodyProcessed.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;">Đang tải lịch sử...</td></tr>';
+        fetch(`${BASE}/makeup/processed`)
+        .then(r => r.json())
+        .then(requests => {
+            if (requests.length === 0) {
+                tbodyProcessed.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#888;">Chưa có đơn dạy bù nào được xử lý.</td></tr>';
+                return;
+            }
+            
+            tbodyProcessed.innerHTML = requests.map(m => {
+                const isApproved = (m.status === 'APPROVED');
+                const badge = isApproved 
+                    ? '<span style="background: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-circle-check"></i> Đã duyệt</span>'
+                    : '<span style="background: #fee2e2; color: #b91c1c; padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-circle-xmark"></i> Từ chối</span>';
+                
+                return `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding:12px 10px;"><strong>${m.lecturer_name}</strong></td>
+                        <td style="padding:12px 10px;">${m.class_name}</td>
+                        <td style="padding:12px 10px;"><code>${m.requested_date}</code></td>
+                        <td style="padding:12px 10px;">${m.period_name} - <strong>${m.room_name}</strong></td>
+                        <td style="padding:12px 10px;"><small>${m.reason || '---'}</small></td>
+                        <td style="padding:12px 10px;"><small style="color: #64748b;">${m.approver_name || 'Admin'}</small></td>
+                        <td style="padding:12px 10px; text-align:center;">${badge}</td>
+                    </tr>
+                `;
+            }).join('');
+        });
+    }
 }
 
 function handleMakeup(reqId, status) {

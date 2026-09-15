@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Lịch dạy - Smart Attendance{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/lecturer.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <div>
+            <h2 style="margin:0; font-family: var(--font-heading); font-weight: 700; color: var(--text-main);"><i class="fa-solid fa-calendar-days" style="color: var(--primary); margin-right: 8px;"></i> Lịch dạy của tôi</h2>
+            <p style="color: var(--text-muted); margin: 5px 0 0 0; font-size: 0.85rem;">Xem lịch trình giảng dạy hàng tuần của bạn</p>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Ngày hiện tại: <strong>{{ now_date }}</strong></div>
+        </div>
+    </div>
+
+    <div class="card" style="padding: 0; overflow: hidden; max-width: 900px; margin: 0 auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead style="background: #f8fafc;">
+                <tr>
+                    <th style="padding: 16px 20px; text-align: left; border-bottom: 1px solid #edf2f7; font-weight: 600; color: #475569;">THỦ</th>
+                    <th style="padding: 16px 20px; text-align: left; border-bottom: 1px solid #edf2f7; font-weight: 600; color: #475569;">GIỜ DẠY</th>
+                    <th style="padding: 16px 20px; text-align: left; border-bottom: 1px solid #edf2f7; font-weight: 600; color: #475569;">LỚP HỌC</th>
+                    <th style="padding: 16px 20px; text-align: left; border-bottom: 1px solid #edf2f7; font-weight: 600; color: #475569;">PHÒNG HỌC</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sch in schedule %}
+                <tr style="transition: background-color 0.2s;">
+                    <td style="padding: 16px 20px; border-bottom: 1px solid #edf2f7; color: #1e293b;">
+                        <strong style="font-size: 1rem; color: var(--primary);">{{ ['','','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ Nhật'][sch.weekday] }}</strong>
+                    </td>
+                    <td style="padding: 16px 20px; border-bottom: 1px solid #edf2f7; color: #475569;">
+                        <span style="background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 500;">
+                            {{ sch.start_time }} - {{ sch.end_time }}
+                        </span>
+                    </td>
+                    <td style="padding: 16px 20px; border-bottom: 1px solid #edf2f7; font-weight: 600; color: #0f172a;">
+                        {{ sch.class_name }}
+                    </td>
+                    <td style="padding: 16px 20px; border-bottom: 1px solid #edf2f7;">
+                        <code style="background: #ebf8ff; color: var(--primary); padding: 4px 10px; border-radius: 6px; font-weight: 600; font-family: monospace; font-size: 0.9rem;">
+                            {{ sch.room_name }}
+                        </code>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not schedule %}
+                <tr>
+                    <td colspan="4" style="padding: 40px; text-align: center; color: #64748b;">
+                        <i class="fa-solid fa-calendar-xmark" style="font-size: 2.5rem; color: #cbd5e1; margin-bottom: 15px; display: block;"></i>
+                        Chưa có lịch dạy nào được gán trong hệ thống
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/lecturer.js') }}"></script>
+{% endblock %}

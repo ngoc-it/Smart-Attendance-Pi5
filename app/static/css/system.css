@@ -28,7 +28,7 @@
     background: #f7fafc;
 }
 
-/* Biểu tượng thao tác (✏️, 🗑) - Shared from lecturer.css but defining here too for independence */
+/* Biểu tượng thao tác (Edit, Delete) - Shared from lecturer.css but defining here too for independence */
 .action-icon-btn {
     width: 30px;
     height: 30px;

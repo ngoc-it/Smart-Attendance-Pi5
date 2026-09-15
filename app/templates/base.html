@@ -3,51 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Smart Attendance Dashboard{% endblock %}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>{% block title %}Smart Campus Dashboard{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <!-- Top Header -->
     <header>
-        <h1>Smart Attendance - Quản lý Điểm danh</h1>
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <div style="text-align: right;">
-                <div style="font-weight: 600; font-size: 0.9rem;">{{ session.get('name', 'User') }}</div>
-                <div style="font-size: 0.7rem; text-transform: uppercase; opacity: 0.8;">{{ session.get('role', '') }}</div>
+        <div class="header-brand">
+            <div class="brand-logo">
+                <i class="fa-solid fa-graduation-cap"></i>
             </div>
-            <div class="status-badge registered" style="font-size: 0.85rem;">Hệ thống AI: Hoạt động</div>
+            <div class="brand-text">
+                <h1>Smart Campus</h1>
+                <span>Hệ thống Quản lý Đào tạo & Điểm danh Sinh trắc học</span>
+            </div>
+        </div>
+        
+        <div class="header-actions">
+            <div class="status-indicator">
+                <span class="indicator-dot blinking"></span>
+                <span class="indicator-text">Hệ thống AI: Hoạt động</span>
+            </div>
+            
+            <div class="user-profile-wrapper" style="position: relative;">
+                <div class="user-profile" onclick="toggleUserDropdown(event)" style="cursor: pointer;" title="Tài khoản cá nhân">
+                    <div class="user-avatar">
+                        {{ session.get('name', 'U')[0] | upper }}
+                    </div>
+                    <div class="user-info">
+                        <span class="user-name">{{ session.get('name', 'User') }}</span>
+                        <span class="user-role">{{ 'Quản trị viên' if session.get('role') == 'admin' else 'Giảng viên' }}</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down" style="font-size: 0.75rem; color: rgba(255,255,255,0.7); margin-left: 4px;"></i>
+                </div>
+
+                <!-- Dropdown Menu -->
+                <div id="user-dropdown-menu" class="user-dropdown-menu">
+                    <div class="dropdown-header">
+                        <div class="dropdown-user-name">{{ session.get('name', 'User') }}</div>
+                        <div class="dropdown-user-role">{{ 'Quản trị viên' if session.get('role') == 'admin' else 'Giảng viên' }}</div>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a href="javascript:void(0)" onclick="openChangePasswordModalFromDropdown()" class="dropdown-item">
+                        <i class="fa-solid fa-key"></i> Đổi mật khẩu
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a href="{{ url_for('auth.logout') }}" class="dropdown-item logout-item">
+                        <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+                    </a>
+                </div>
+            </div>
         </div>
     </header>
 
     <div class="app-layout">
-        <!-- Main Content Area -->
-        <main class="main-area">
-            {% block content %}
-            {% endblock %}
-        </main>
-
-        <!-- Right Sidebar Navigation -->
-        <aside class="right-sidebar" id="sidebar">
+        <!-- Left Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
             <button class="sidebar-toggle" onclick="toggleSidebar()" title="Thu nhỏ/Mở rộng menu">
-                <span>☰</span>
+                <i class="fa-solid fa-chevron-left toggle-icon"></i>
             </button>
-            <div class="sidebar-title" style="margin-top: 60px;">Menu Công Cụ</div>
+            
+            <div class="sidebar-section-title">Menu Công Cụ</div>
             <ul class="sidebar-menu">
                 {% if session.get('role') == 'admin' %}
                 <li>
                     <a href="{{ url_for('admin.dashboard') }}" class="{% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
-                        <i>🏠</i> <span>Quản trị hệ thống</span>
+                        <i class="fa-solid fa-chart-line"></i> <span>Quản trị hệ thống</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin.accounts_page') }}" class="{% if request.endpoint == 'admin.accounts_page' %}active{% endif %}">
+                        <i class="fa-solid fa-users-gear"></i> <span>Quản lý Tài khoản</span>
                     </a>
                 </li>
                 <li>
                     <a href="{{ url_for('admin.settings_page') }}" class="{% if request.endpoint == 'admin.settings_page' %}active{% endif %}">
-                        <i>⚙️</i> <span>Cấu hình hệ thống</span>
+                        <i class="fa-solid fa-sliders"></i> <span>Cấu hình hệ thống</span>
                     </a>
                 </li>
                 <li>
                     <a href="{{ url_for('academic.academic_page') }}" class="{% if 'academic' in request.endpoint %}active{% endif %}">
-                        <i>🎓</i> <span>Quản lý Học thuật</span>
+                        <i class="fa-solid fa-graduation-cap"></i> <span>Quản lý Học thuật</span>
                     </a>
                 </li>
                 {% endif %}
@@ -55,28 +94,72 @@
                 {% if session.get('role') == 'lecturer' %}
                 <li>
                     <a href="{{ url_for('attendance.index') }}" class="{% if request.endpoint == 'attendance.index' %}active{% endif %}">
-                        <i>🏠</i> <span>Dashboard</span>
+                        <i class="fa-solid fa-house"></i> <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('attendance.schedule_page') }}" class="{% if request.endpoint == 'attendance.schedule_page' %}active{% endif %}">
+                        <i class="fa-solid fa-calendar-days"></i> <span>Lịch dạy của tôi</span>
                     </a>
                 </li>
                 <li>
                     <a href="{{ url_for('enroll.enroll_page') }}" class="{% if request.endpoint == 'enroll.enroll_page' %}active{% endif %}">
-                        <i>👤</i> <span>Đăng ký Sinh viên</span>
+                        <i class="fa-solid fa-user-plus"></i> <span>Đăng ký Sinh viên</span>
                     </a>
                 </li>
                 <li>
                     <a href="{{ url_for('attendance.reports') }}" class="{% if request.endpoint == 'attendance.reports' %}active{% endif %}">
-                        <i>📊</i> <span>Báo cáo & Thống kê</span>
+                        <i class="fa-solid fa-chart-pie"></i> <span>Báo cáo & Thống kê</span>
                     </a>
                 </li>
                 {% endif %}
                 
-                <li style="margin-top: auto; border-top: 1px solid var(--border-color);">
-                    <a href="{{ url_for('auth.logout') }}" style="color: var(--danger);">
-                        <i>🚪</i> <span>Đăng xuất</span>
+                <li class="logout-item">
+                    <a href="{{ url_for('auth.logout') }}" onclick="return confirm('Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?');">
+                        <i class="fa-solid fa-right-from-bracket"></i> <span>Đăng xuất</span>
                     </a>
                 </li>
             </ul>
         </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-area">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+
+    <!-- CHANGE PASSWORD MODAL -->
+    <div id="change-password-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: white; padding: 32px 36px; border-radius: 16px; min-width: 450px; max-width: 600px; width: 92%; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+            <h3 style="margin-top: 0; font-family: var(--font-heading); color: var(--primary); display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-key"></i> Đổi mật khẩu cá nhân
+            </h3>
+            <p style="font-size: 0.85rem; color: #666; margin-bottom: 20px;">Vui lòng nhập mật khẩu hiện tại và mật khẩu mới của bạn.</p>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 0.85rem; margin-bottom: 5px; font-weight: 600;">Mật khẩu hiện tại</label>
+                <input type="password" id="cp-old-password" class="form-control" placeholder="••••••••" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.9rem;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 0.85rem; margin-bottom: 5px; font-weight: 600;">Mật khẩu mới</label>
+                <input type="password" id="cp-new-password" class="form-control" placeholder="••••••••" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.9rem;">
+                <small style="font-size: 0.75rem; color: #6b7280; margin-top: 4px; display: block;">Yêu cầu: Tối thiểu 8 ký tự, gồm chữ HOA, chữ thường, số và ký tự đặc biệt (!@#$%^&*).</small>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 0.85rem; margin-bottom: 5px; font-weight: 600;">Xác nhận mật khẩu mới</label>
+                <input type="password" id="cp-confirm-password" class="form-control" placeholder="••••••••" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.9rem;">
+            </div>
+
+            <div id="cp-error-msg" style="display: none; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 15px;"></div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn-action-subtle" onclick="closeChangePasswordModal()" style="padding: 8px 16px; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer;">Hủy</button>
+                <button class="btn btn-primary" onclick="submitChangePassword()" style="padding: 8px 16px; border-radius: 6px; background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer;">Lưu mật khẩu</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -96,7 +179,108 @@
             if (localStorage.getItem('sidebar-collapsed') === 'true') {
                 document.getElementById('sidebar').classList.add('collapsed');
             }
+            {% if session.get('must_change_password') %}
+            openChangePasswordModal();
+            const errBox = document.getElementById('cp-error-msg');
+            if (errBox) {
+                errBox.innerText = 'Bạn đang sử dụng mật khẩu mặc định ban đầu. Vui lòng đổi mật khẩu mới để bảo mật tài khoản!';
+                errBox.style.display = 'block';
+                errBox.style.background = '#fffbe6';
+                errBox.style.color = '#d48806';
+                errBox.style.borderColor = '#ffe58f';
+            }
+            {% endif %}
         });
+
+        // User Profile Dropdown logic
+        function toggleUserDropdown(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById('user-dropdown-menu');
+            if (dropdown) {
+                dropdown.classList.toggle('show');
+            }
+        }
+
+        function openChangePasswordModalFromDropdown() {
+            const dropdown = document.getElementById('user-dropdown-menu');
+            if (dropdown) dropdown.classList.remove('show');
+            openChangePasswordModal();
+        }
+
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('user-dropdown-menu');
+            const profile = document.querySelector('.user-profile-wrapper');
+            if (dropdown && profile && !profile.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        // Change Password Modal logic
+        function openChangePasswordModal() {
+            const modal = document.getElementById('change-password-modal');
+            if (modal) {
+                document.getElementById('cp-old-password').value = '';
+                document.getElementById('cp-new-password').value = '';
+                document.getElementById('cp-confirm-password').value = '';
+                const errBox = document.getElementById('cp-error-msg');
+                if (errBox) errBox.style.display = 'none';
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeChangePasswordModal() {
+            const modal = document.getElementById('change-password-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function submitChangePassword() {
+            const oldPassword = document.getElementById('cp-old-password').value.trim();
+            const newPassword = document.getElementById('cp-new-password').value.trim();
+            const confirmPassword = document.getElementById('cp-confirm-password').value.trim();
+            const errBox = document.getElementById('cp-error-msg');
+
+            if (!oldPassword || !newPassword || !confirmPassword) {
+                errBox.innerText = 'Vui lòng nhập đầy đủ các trường thông tin!';
+                errBox.style.display = 'block';
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                errBox.innerText = 'Mật khẩu mới và xác nhận mật khẩu không trùng khớp!';
+                errBox.style.display = 'block';
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                errBox.innerText = 'Mật khẩu mới phải chứa ít nhất 6 ký tự!';
+                errBox.style.display = 'block';
+                return;
+            }
+
+            fetch('/change_password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    old_password: oldPassword,
+                    new_password: newPassword,
+                    confirm_password: confirmPassword
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    closeChangePasswordModal();
+                } else {
+                    errBox.innerText = data.message || 'Lỗi đổi mật khẩu!';
+                    errBox.style.display = 'block';
+                }
+            })
+            .catch(err => {
+                errBox.innerText = 'Lỗi kết nối máy chủ!';
+                errBox.style.display = 'block';
+            });
+        }
     </script>
     {% block extra_js %}{% endblock %}
 </body>

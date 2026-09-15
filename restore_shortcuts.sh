@@ -25,7 +25,7 @@ cat > "$SHORTCUT_WEB" <<EOF
 [Desktop Entry]
 Name=2. Vào Quản Lý (Web)
 Comment=Mo trinh duyet vao trang diem danh
-Exec=chromium-browser http://localhost:5000
+Exec=chromium-browser --password-store=basic http://localhost:5000
 Icon=camera-video
 Terminal=false
 Type=Application

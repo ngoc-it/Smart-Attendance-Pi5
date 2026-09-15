@@ -16,31 +16,53 @@ class FaceEngine:
         self.app = FaceAnalysis(
             name='buffalo_l', 
             allowed_modules=['detection', 'recognition'], 
-            providers=['CPUExecutionProvider']
+            providers=[('CPUExecutionProvider', {'intra_op_num_threads': 2, 'inter_op_num_threads': 2})]
         )
         self.app.prepare(ctx_id=0, det_size=(640, 640))
     
         self.known_embeddings = {}
         self.threshold = float(self.db.get_setting("match_threshold", Config.MATCH_THRESHOLD))
+        
+        # Khởi tạo bộ chống giả mạo liveness
+        from app.core.antispoof import AntiSpoofDetector
+        self.liveness_detector = AntiSpoofDetector()
+        self.liveness_threshold = float(self.db.get_setting("liveness_threshold", 0.6))
+        
         self.load_database()    
 
     def refresh_settings(self):
         """Cap nhat lai cac cau hinh tu Database"""
         self.threshold = float(self.db.get_setting("match_threshold", Config.MATCH_THRESHOLD))
+        self.liveness_threshold = float(self.db.get_setting("liveness_threshold", 0.6))
+
 
     def load_database(self):
-        """Nap tat ca vector mau tu thu muc data/embeddings vao RAM"""
+        """Nạp vector mẫu của các sinh viên ĐANG HOẠT ĐỘNG (is_active = 1) từ thư mục data/embeddings vào RAM"""
         if not os.path.exists(Config.EMBEDDINGS_DIR):
             os.makedirs(Config.EMBEDDINGS_DIR)
         
+        # Lấy danh sách MSSV đang active từ DB
+        active_student_ids = set()
+        try:
+            with self.db._get_conn() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM students WHERE COALESCE(is_active, 1) = 1")
+                rows = cursor.fetchall()
+                active_student_ids = {row[0] for row in rows}
+        except Exception as db_err:
+            print(f"Engine: Lỗi truy vấn danh sách sinh viên active: {db_err}")
+
         self.known_embeddings = {}
         for file in os.listdir(Config.EMBEDDINGS_DIR):
             if file.endswith(".npy"):
                 student_id = file.replace(".npy", "")
+                # Chỉ nạp vào RAM nếu sinh viên đang active (hoặc nếu chưa lọc được DB)
+                if active_student_ids and student_id not in active_student_ids:
+                    continue
                 try:
                     self.known_embeddings[student_id] = np.load(os.path.join(Config.EMBEDDINGS_DIR, file))
                 except Exception as e:
-                    print(f"Loi khi tai embedding {file}: {e}")
+                    print(f"Lỗi khi tải embedding {file}: {e}")
 
     def recognize(self, frame):
         """Nhan dien khuon mat tren mot khung hinh"""
@@ -52,6 +74,11 @@ class FaceEngine:
             # Trich xuat toa do va embedding da chuan hoa
             x1, y1, x2, y2 = face.bbox.astype(int)
             emb = face.normed_embedding
+            
+            # Chạy chống giả mạo (Anti-Spoofing)
+            is_real, liveness_score, liveness_label = self.liveness_detector.predict(
+                frame, [x1, y1, x2, y2], threshold=self.liveness_threshold
+            )
             
             best_id = "Unknown"
             max_sim = -1.0
@@ -68,14 +95,19 @@ class FaceEngine:
                 output.append({
                     "id": best_id,
                     "box": (x1, y1, x2, y2),
-                    "confidence": float(max_sim)
+                    "confidence": float(max_sim),
+                    "liveness": liveness_label,
+                    "is_real": is_real
                 })
             else:
                 output.append({
                     "id": "Unknown",
                     "box": (x1, y1, x2, y2),
-                    "confidence": float(max_sim)
+                    "confidence": float(max_sim),
+                    "liveness": liveness_label,
+                    "is_real": is_real
                 })
+
         return output
 
     def enroll_session_worker(self, student_id):
@@ -169,31 +201,87 @@ class FaceEngine:
                 shared.enroll_state["status"] = "error"
                 shared.enroll_state["message"] = f"Lỗi hệ thống: {str(e)}"
 
-    def verify_attendance(self, frame):
+    def verify_attendance(self, frame, return_meta=False):
         """Dùng cho màn hình cảm ứng: Kiểm tra duy nhất 1 khuôn mặt và trả về ID nếu nhận diện thành công"""
+        t0 = time.time()
+        
+        meta = {
+            "liveness_score": 0.0,
+            "liveness_threshold": self.liveness_threshold,
+            "liveness_result": False,
+            "liveness_label": "Unknown",
+            "attack_type": None,
+            "similarity_score": -1.0,
+            "match_threshold": self.threshold,
+            "recognition_accepted": False,
+            "recognition_result": "ERROR",
+            "predicted_identity": None,
+            "latency_face_recognition_ms": 0.0,
+            "latency_liveness_ms": 0.0,
+            "latency_matching_ms": 0.0
+        }
+
+        # 1. Detection & Feature Embedding via InsightFace
+        t_face_start = time.time()
         faces = self.app.get(frame)
+        t_face_end = time.time()
+        meta["latency_face_recognition_ms"] = (t_face_end - t_face_start) * 1000.0
         
         if len(faces) == 0:
-            return False, "Không tìm thấy khuôn mặt nào!", None
+            meta["recognition_result"] = "NO_FACE"
+            msg = "Không tìm thấy khuôn mặt nào!"
+            return (False, msg, None, meta) if return_meta else (False, msg, None)
             
         if len(faces) > 1:
-            return False, "Phát hiện nhiều người! Chỉ 1 người được phép điểm danh.", None
+            meta["recognition_result"] = "MULTIPLE_FACES"
+            msg = "Phát hiện nhiều người! Chỉ 1 người được phép điểm danh."
+            return (False, msg, None, meta) if return_meta else (False, msg, None)
             
         # Có duy nhất 1 khuôn mặt
         face = faces[0]
         x1, y1, x2, y2 = face.bbox.astype(int)
-        emb = face.normed_embedding
         
+        # 2. Anti-Spoofing Check (MiniFASNetV2)
+        t_live_start = time.time()
+        is_real, liveness_score, liveness_label = self.liveness_detector.predict(
+            frame, [x1, y1, x2, y2], threshold=self.liveness_threshold
+        )
+        t_live_end = time.time()
+        meta["latency_liveness_ms"] = (t_live_end - t_live_start) * 1000.0
+        meta["liveness_score"] = float(liveness_score)
+        meta["liveness_result"] = bool(is_real)
+        meta["liveness_label"] = str(liveness_label)
+        
+        if not is_real:
+            attack_type = "Ảnh chụp/Giấy in" if liveness_label == "Print-attack" else "Màn hình điện thoại/Video"
+            meta["attack_type"] = liveness_label
+            meta["recognition_result"] = "SPOOF_ATTACK"
+            msg = f"Cảnh báo giả mạo! Phát hiện {attack_type} (độ tin cậy: {liveness_score:.2%})"
+            return (False, msg, None, meta) if return_meta else (False, msg, None)
+            
+        # 3. Vector Feature Extraction & Cosine Similarity Matching
+        emb = face.normed_embedding
         best_id = "Unknown"
         max_sim = -1.0
         
+        t_match_start = time.time()
         for student_id, known_emb in self.known_embeddings.items():
-            sim = np.dot(emb, known_emb)
+            sim = float(np.dot(emb, known_emb))
             if sim > max_sim:
                 max_sim = sim
                 best_id = student_id
+        t_match_end = time.time()
+        meta["latency_matching_ms"] = (t_match_end - t_match_start) * 1000.0
+        meta["similarity_score"] = float(max_sim)
+        meta["predicted_identity"] = best_id
                 
         if max_sim > self.threshold:
-            return True, f"Nhận diện thành công: {best_id}", best_id
+            meta["recognition_accepted"] = True
+            meta["recognition_result"] = "SUCCESS"
+            msg = f"Nhận diện thành công: {best_id}"
+            return (True, msg, best_id, meta) if return_meta else (True, msg, best_id)
         else:
-            return False, "Khuôn mặt chưa được đăng ký!", None
+            meta["recognition_accepted"] = False
+            meta["recognition_result"] = "UNREGISTERED"
+            msg = "Khuôn mặt chưa được đăng ký!"
+            return (False, msg, None, meta) if return_meta else (False, msg, None)

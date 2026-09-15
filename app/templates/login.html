@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đăng nhập - Smart Attendance</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
 </head>
+
 <body>
     <div class="auth-container">
         <div class="auth-card">
@@ -19,46 +22,75 @@
                 </div>
                 <div class="system-title">SMART ATTENDANCE</div>
             </div>
-            
+
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="flash-messages">
-                        {% for category, message in messages %}
-                            <div class="flash-msg">{{ message }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
+            {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                <div class="flash-msg">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
             {% endwith %}
 
             <form action="{{ url_for('auth.login') }}" method="POST" class="auth-form">
                 <div class="role-selector">
                     <label class="role-option">
-                        <input type="radio" name="role" value="lecturer" checked> 
-                        <span>👨‍🏫 Giảng viên</span>
+                        <input type="radio" name="role" value="lecturer" checked>
+                        <span>Giảng viên</span>
                     </label>
                     <label class="role-option">
-                        <input type="radio" name="role" value="admin"> 
-                        <span>🛠 Admin</span>
+                        <input type="radio" name="role" value="admin">
+                        <span>Admin</span>
                     </label>
                 </div>
 
                 <div class="form-group">
-                    <label>Tên đăng nhập</label>
-                    <input type="text" name="username" placeholder="Nhập mã cán bộ / admin" required autocomplete="username">
+                    <label>Tên Đăng Nhập</label>
+                    <input type="text" name="username" placeholder="Email" required autocomplete="username">
                 </div>
 
                 <div class="form-group">
-                    <label>Mật khẩu</label>
-                    <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <label style="margin-bottom: 0;">Mật khẩu</label>
+                        <a href="{{ url_for('auth.forgot_password') }}"
+                            style="font-size: 0.8rem; color: #2563eb; text-decoration: none; font-weight: 500;">Quên mật
+                            khẩu?</a>
+                    </div>
+                    <div class="password-wrapper" style="position: relative;">
+                        <input type="password" id="password-input" name="password" placeholder="••••••••" required
+                            autocomplete="current-password" style="width: 100%; padding-right: 42px;">
+                        <button type="button" id="toggle-password-btn" onclick="togglePasswordVisibility()"
+                            title="Hiển thị mật khẩu"
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1rem; color: #666; padding: 4px;">
+                            <i class="fa-solid fa-eye" id="eye-icon"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-login">ĐĂNG NHẬP HỆ THỐNG</button>
             </form>
-            
+
+            <script>
+                function togglePasswordVisibility() {
+                    const pwdInput = document.getElementById('password-input');
+                    const eyeIcon = document.getElementById('eye-icon');
+                    if (pwdInput.type === 'password') {
+                        pwdInput.type = 'text';
+                        eyeIcon.className = 'fa-solid fa-eye-slash';
+                    } else {
+                        pwdInput.type = 'password';
+                        eyeIcon.className = 'fa-solid fa-eye';
+                    }
+                }
+            </script>
+
             <div style="text-align: center; margin-top: 25px; font-size: 0.8rem; color: #888;">
                 © 2026 MTU Smart Attendance System
             </div>
         </div>
     </div>
 </body>
+
 </html>

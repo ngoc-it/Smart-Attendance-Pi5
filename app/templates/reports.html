@@ -8,7 +8,7 @@
 {% block content %}
 <div class="admin-container">
     <div class="admin-header-row" style="margin-bottom: 24px; justify-content: space-between;">
-        <h2 style="border-bottom: none; margin-bottom: 0;">📊 Báo cáo điểm danh</h2>
+        <h2 style="border-bottom: none; margin-bottom: 0;"><i class="fa-solid fa-chart-line" style="color: var(--primary); margin-right: 8px;"></i>Báo cáo điểm danh</h2>
         <div style="display: flex; gap: 12px; align-items: center;">
             <input type="date" id="report_date" value="{{ selected_date }}" class="form-control" onchange="filterReport()" style="width: 160px;">
             <select id="report_class" class="form-control" onchange="filterReport()" style="width: 250px;">
@@ -19,7 +19,7 @@
                 </option>
                 {% endfor %}
             </select>
-            <button onclick="exportExcel()" class="btn-export">📥 Xuất ngày</button>
+            <button onclick="exportExcel()" class="btn-export"><i class="fa-solid fa-file-excel"></i> Xuất ngày</button>
         </div>
     </div>
 
@@ -33,7 +33,7 @@
                 <label style="font-size: 0.8rem; color: #64748b;">Đến:</label>
                 <input type="date" id="summary_end" class="form-control" style="width: 150px;">
             </div>
-            <button onclick="exportSummaryExcel()" class="btn-export" style="background: var(--primary); margin-left: auto;">📊 Xuất File Tổng Hợp</button>
+            <button onclick="exportSummaryExcel()" class="btn-export" style="background: var(--primary); margin-left: auto;"><i class="fa-solid fa-file-excel"></i> Xuất File Tổng Hợp</button>
         </div>
     </div>
 
@@ -42,7 +42,7 @@
         {% for sess in report %}
         <div class="session-report-block" style="margin-bottom: 40px;">
             <h3 style="color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                🕒 Ca học: {{ sess.info }}
+                <i class="fa-regular fa-clock"></i> Ca học: {{ sess.info }}
                 <span style="font-size: 0.8rem; font-weight: normal; background: #e2e8f0; padding: 2px 8px; border-radius: 10px; color: #475569;">
                     ID: {{ sess.session_id }}
                 </span>
@@ -114,7 +114,7 @@
     </div>
     {% else %}
     <div class="card" style="text-align: center; padding: 100px 20px; color: #a0aec0;">
-        <i style="font-size: 4rem; display: block; margin-bottom: 20px;">📂</i>
+        <i class="fa-regular fa-folder-open" style="font-size: 4rem; display: block; margin-bottom: 20px; color: var(--text-muted);"></i>
         Vui lòng chọn ngày và lớp học để xem báo cáo.
     </div>
     {% endif %}

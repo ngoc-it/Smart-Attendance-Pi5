@@ -11,15 +11,17 @@ function getStaticData(id) {
 
 // --- CORE FUNCTIONS ---
 function switchTab(id) {
+    const content = document.getElementById(id);
+    if (!content) return;
+
     document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    
-    const content = document.getElementById(id);
-    if (content) content.style.display = 'block';
-    
+
+    content.style.display = 'block';
+
     const btn = document.querySelector(`.tab-btn[data-tab="${id}"]`);
     if (btn) btn.classList.add('active');
-    
+
     localStorage.setItem('activeTabSystem', id);
 }
 
@@ -38,7 +40,15 @@ function showModal(type, id = null, data = {}) {
             <div class="form-group"><label>Họ tên</label><input type="text" id="m-name" value="${data.name || ''}" class="form-control"></div>
             <div class="form-group"><label>Mã GV</label><input type="text" id="m-code" value="${data.code || ''}" class="form-control"></div>
             <div class="form-group"><label>Mật khẩu ${id ? '(Để trống nếu không đổi)' : ''}</label><input type="password" id="m-pass" class="form-control"></div>`;
+    } else if (type === 'student') {
+        title.textContent = id ? 'Sửa Sinh viên' : 'Thêm Sinh viên';
+        body.innerHTML = `
+            <div class="form-group"><label>MSSV (Mã số sinh viên)</label><input type="text" id="m-std-id" value="${id || ''}" ${id ? 'disabled' : ''} class="form-control"></div>
+            <div class="form-group"><label>Họ tên</label><input type="text" id="m-name" value="${data.name || ''}" class="form-control"></div>
+            <div class="form-group"><label>Ngày sinh (DD/MM/YYYY)</label><input type="text" id="m-dob" value="${data.dob || ''}" placeholder="Ví dụ: 12/03/2004" class="form-control"></div>
+            <div class="form-group"><label>Lớp sinh hoạt</label><input type="text" id="m-std-class" value="${data.class || ''}" class="form-control"></div>`;
     } else if (type === 'class') {
+
         title.textContent = id ? 'Sửa Lớp học' : 'Thêm Lớp học';
         const cNames = getStaticData('data-courses-names');
         const cIds = getStaticData('data-courses-ids');
@@ -53,17 +63,18 @@ function showModal(type, id = null, data = {}) {
         title.textContent = `Phân công giảng viên - ${data.class_name}`;
         const gvNames = getStaticData('data-lecturers-names') || [];
         const gvIds = getStaticData('data-lecturers-ids') || [];
-        opts = gvIds.map((gid, i) => `<option value="${gid}">${gvNames[i]}</option>`).join('');
-        
+        const currentLecturerId = data.lecturer_id ? String(data.lecturer_id).split(',')[0] : '';
+        opts = gvIds.map((gid, i) => `<option value="${gid}" ${String(gid) === currentLecturerId ? 'selected' : ''}>${gvNames[i]}</option>`).join('');
+
         body.innerHTML = `
             <div class="form-group">
                 <label>Chọn giảng viên giảng dạy:</label>
                 <select id="m-lecturer-id" class="form-control">
-                    <option value="">-- Chọn giảng viên --</option>
+                    <option value="">-- Chưa phân công / Hủy phân công --</option>
                     ${opts}
                 </select>
             </div>
-            <p style="font-size:0.8rem;color:#666;">💡 Thao tác này sẽ gán lớp học phần cho giảng viên được chọn.</p>
+            <p style="font-size:0.8rem;color:#666;">💡 Chọn giảng viên để gán quyền quản lý lớp học phần này, hoặc chọn "Hủy phân công" để gỡ bỏ.</p>
         `;
     } else if (type === 'dept') {
         title.textContent = id ? 'Sửa Khoa' : 'Thêm Khoa';
@@ -80,7 +91,7 @@ function showModal(type, id = null, data = {}) {
         const mNames = getStaticData('data-majors-names');
         const mIds = getStaticData('data-majors-ids');
         opts = mIds.map((mid, i) => `<option value="${mid}" ${mid == data.major_id ? 'selected' : ''}>${mNames[i]}</option>`).join('');
-        
+
         body.innerHTML = `
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <div class="form-group"><label>Mã HP</label><input type="text" id="m-code" value="${data.code || ''}" class="form-control"></div>
@@ -105,12 +116,29 @@ function showModal(type, id = null, data = {}) {
             <div class="form-group"><label>Tổng số tiết (Tự động tính nếu để 0)</label><input type="number" id="m-periods" value="${data.periods || 0}" class="form-control"></div>`;
     } else if (type === 'view-students') {
         title.textContent = `Danh sách sinh viên - ${data.class_name}`;
-        const rows = data.students.map(s => `<tr><td>${s.id}</td><td>${s.name}</td><td>${s.dob || '-'}</td></tr>`).join('');
+        const rows = data.students.map(s => `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;">
+                <td style="padding: 12px 14px; font-weight: 500; color: #1e293b;">${s.id}</td>
+                <td style="padding: 12px 14px; font-weight: 600; color: #0f172a;">${s.name}</td>
+                <td style="padding: 12px 14px; color: #64748b;">${s.dob || '-'}</td>
+                <td style="padding: 12px 14px; text-align: right;">
+                    <button class="btn-action-subtle btn-remove-class-student" data-class-id="${data.class_id}" data-student-id="${s.id}" style="color: #dc2626; border: 1px solid #fecaca; background: #fef2f2; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; font-weight: 600; cursor: pointer;" title="Loại sinh viên khỏi lớp này">
+                        <i class="fa-solid fa-user-minus"></i> Loại
+                    </button>
+                </td>
+            </tr>`).join('');
         body.innerHTML = `
-            <div style="max-height: 400px; overflow-y: auto;">
-                <table style="width: 100%; font-size: 0.85rem;">
-                    <thead><tr><th>MSSV</th><th>Họ tên</th><th>Ngày sinh</th></tr></thead>
-                    <tbody>${rows || '<tr><td colspan="3" style="text-align:center;">Chưa có sinh viên</td></tr>'}</tbody>
+            <div style="max-height: 480px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+                <table style="width: 100%; font-size: 0.9rem; border-collapse: collapse; text-align: left;">
+                    <thead style="position: sticky; top: 0; background: #f8fafc; border-bottom: 2px solid #cbd5e1; z-index: 2;">
+                        <tr>
+                            <th style="padding: 12px 14px; color: #475569; font-weight: 700;">MSSV</th>
+                            <th style="padding: 12px 14px; color: #475569; font-weight: 700;">HỌ TÊN</th>
+                            <th style="padding: 12px 14px; color: #475569; font-weight: 700;">NGÀY SINH</th>
+                            <th style="padding: 12px 14px; color: #475569; font-weight: 700; text-align: right;">THAO TÁC</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows || '<tr><td colspan="4" style="text-align:center; padding: 24px; color: #94a3b8;">Chưa có sinh viên trong lớp này</td></tr>'}</tbody>
                 </table>
             </div>`;
         document.getElementById('btn-modal-save').style.display = 'none';
@@ -147,16 +175,16 @@ function apiCall(url, method, body, onSuccess) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
     })
-    .then(r => r.json())
-    .then(d => {
-        if (d.status === 'success') {
-            closeModal();
-            if (onSuccess) onSuccess();
-        } else {
-            alert('Lỗi: ' + d.message);
-        }
-    })
-    .catch(err => alert('Lỗi kết nối server!'));
+        .then(r => r.json())
+        .then(d => {
+            if (d.status === 'success') {
+                closeModal();
+                if (onSuccess) onSuccess();
+            } else {
+                alert('Lỗi: ' + d.message);
+            }
+        })
+        .catch(err => alert('Lỗi kết nối server!'));
 }
 
 function saveModal() {
@@ -169,16 +197,23 @@ function saveModal() {
         const password = document.getElementById('m-pass').value;
         const url = modalId ? `${BASE_ADMIN}/lecturer/${modalId}` : `${BASE_ADMIN}/lecturer`;
         apiCall(url, modalId ? 'PUT' : 'POST', { username, name, code, password }, () => location.reload());
+    } else if (modalAction === 'student') {
+        const student_id = document.getElementById('m-std-id').value.trim();
+        const dob = document.getElementById('m-dob').value.trim();
+        const student_class = document.getElementById('m-std-class').value.trim();
+        if (!student_id || !name) { alert('MSSV và Họ tên là bắt buộc!'); return; }
+        const url = modalId ? `${BASE_ADMIN}/student/${modalId}` : `${BASE_ADMIN}/student`;
+        apiCall(url, modalId ? 'PUT' : 'POST', { student_id, name, dob, student_class }, () => location.reload());
     } else if (modalAction === 'class') {
+
         const code = document.getElementById('m-code').value;
         const course_id = document.getElementById('m-course').value;
         const url = modalId ? `${BASE_ADMIN}/class/${modalId}` : `${BASE_ADMIN}/class`;
         apiCall(url, modalId ? 'PUT' : 'POST', { name, code, course_id: course_id ? parseInt(course_id) : null }, () => location.reload());
     } else if (modalAction === 'assign-lecturer') {
         const userId = document.getElementById('m-lecturer-id').value;
-        if (!userId) { alert('Vui lòng chọn giảng viên!'); return; }
-        apiCall(`${BASE_ADMIN}/lecturer/assign`, 'POST', { user_id: parseInt(userId), class_id: modalId }, () => {
-            alert('Phân công thành công!');
+        apiCall(`${BASE_ADMIN}/lecturer/assign`, 'POST', { user_id: userId ? parseInt(userId) : null, class_id: parseInt(modalId) }, () => {
+            alert('Cập nhật phân công giảng viên thành công!');
             location.reload();
         });
     } else if (modalAction === 'dept') {
@@ -200,51 +235,103 @@ function saveModal() {
 }
 
 // --- EVENT LISTENERS ---
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const savedTab = localStorage.getItem('activeTabSystem');
     if (savedTab) switchTab(savedTab);
 
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         const target = e.target;
-        if (target.classList.contains('tab-btn')) switchTab(target.dataset.tab);
-        if (target.classList.contains('btn-add')) showModal(target.dataset.type);
-        if (target.id === 'btn-modal-cancel' || target.id === 'modal-overlay') closeModal();
+        const tabBtn = target.closest('.tab-btn');
+        if (tabBtn) switchTab(tabBtn.dataset.tab);
+
+        const btnAdd = target.closest('.btn-add');
+        if (btnAdd) showModal(btnAdd.dataset.type);
+
+        if (target.id === 'btn-modal-cancel') closeModal();
         if (target.id === 'btn-modal-save') saveModal();
 
-        const id = target.dataset.id;
-        if (target.classList.contains('btn-edit-gv')) {
-            showModal('lecturer', id, { username: target.dataset.user, name: target.dataset.name, code: target.dataset.code });
+        const btnEditGv = target.closest('.btn-edit-gv');
+        if (btnEditGv) {
+            showModal('lecturer', btnEditGv.dataset.id, { username: btnEditGv.dataset.user, name: btnEditGv.dataset.name, code: btnEditGv.dataset.code });
         }
-        if (target.classList.contains('btn-del-gv')) {
-            if (confirm('Xóa giảng viên này?')) apiCall(`${BASE_ADMIN}/lecturer/${id}`, 'DELETE', {}, () => location.reload());
+        const btnDelGv = target.closest('.btn-del-gv');
+        if (btnDelGv) {
+            if (confirm('Xóa giảng viên này?')) apiCall(`${BASE_ADMIN}/lecturer/${btnDelGv.dataset.id}`, 'DELETE', {}, () => location.reload());
         }
-        if (target.classList.contains('btn-edit-cls')) {
-            showModal('class', id, { name: target.dataset.name, code: target.dataset.code, course_id: target.dataset.course });
+        const btnEditStd = target.closest('.btn-edit-std');
+        if (btnEditStd) {
+            showModal('student', btnEditStd.dataset.id, { name: btnEditStd.dataset.name, dob: btnEditStd.dataset.dob, class: btnEditStd.dataset.class });
         }
-        if (target.classList.contains('btn-del-cls')) {
-            if (confirm('Xóa lớp học này?')) apiCall(`${BASE_ADMIN}/class/${id}`, 'DELETE', {}, () => location.reload());
+        const btnDelStd = target.closest('.btn-del-std');
+        if (btnDelStd) {
+            if (confirm('Ngưng hoạt động sinh viên này? (Dữ liệu cũ vẫn được giữ nguyên)')) {
+                apiCall(`${BASE_ADMIN}/student/${btnDelStd.dataset.id}`, 'DELETE', {}, () => location.reload());
+            }
         }
-        if (target.classList.contains('btn-view-students')) {
-            fetch(`${BASE_ADMIN}/class/${id}/students`).then(r => r.json()).then(d => {
-                if (d.status === 'success') showModal('view-students', null, d);
+        const btnEditCls = target.closest('.btn-edit-cls');
+        if (btnEditCls) {
+            showModal('class', btnEditCls.dataset.id, { name: btnEditCls.dataset.name, code: btnEditCls.dataset.code, course_id: btnEditCls.dataset.course });
+        }
+        const btnDelCls = target.closest('.btn-del-cls');
+        if (btnDelCls) {
+            if (confirm('Xóa lớp học này?')) apiCall(`${BASE_ADMIN}/class/${btnDelCls.dataset.id}`, 'DELETE', {}, () => location.reload());
+        }
+
+        const btnViewStudents = target.closest('.btn-view-students');
+        if (btnViewStudents) {
+            const classId = btnViewStudents.dataset.id;
+            fetch(`${BASE_ADMIN}/class/${classId}/students`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'success') {
+                        showModal('view-students', null, d);
+                    } else {
+                        alert('Lỗi: ' + (d.message || 'Không thể lấy danh sách sinh viên'));
+                    }
+                })
+                .catch(err => {
+                    alert('Lỗi kết nối khi lấy danh sách sinh viên!');
+                });
+        }
+        const btnRemoveClassStudent = target.closest('.btn-remove-class-student');
+        if (btnRemoveClassStudent) {
+            const classId = btnRemoveClassStudent.dataset.classId;
+            const studentId = btnRemoveClassStudent.dataset.studentId;
+            if (confirm(`Loại sinh viên ${studentId} khỏi lớp học phần này?`)) {
+                apiCall(`${BASE_ADMIN}/class/${classId}/student/${studentId}`, 'DELETE', {}, () => {
+                    alert('Đã loại sinh viên khỏi lớp học phần thành công!');
+                    location.reload();
+                });
+            }
+        }
+        const btnAssign = target.closest('.btn-assign-lecturer');
+        if (btnAssign) {
+            showModal('assign-lecturer', btnAssign.dataset.id, {
+                class_name: btnAssign.dataset.name,
+                lecturer_id: btnAssign.dataset.lecturerId
             });
         }
-        if (target.classList.contains('btn-assign-lecturer')) {
-            showModal('assign-lecturer', id, { class_name: target.dataset.name });
+        const btnEditDept = target.closest('.btn-edit-dept');
+        if (btnEditDept) showModal('dept', btnEditDept.dataset.id, { name: btnEditDept.dataset.name });
+        
+        const btnDelDept = target.closest('.btn-del-dept');
+        if (btnDelDept) {
+            if (confirm('Xóa Khoa này?')) apiCall(`${BASE_ACADEMIC}/department/${btnDelDept.dataset.id}`, 'DELETE', {}, () => location.reload());
         }
-        if (target.classList.contains('btn-edit-dept')) showModal('dept', id, { name: target.dataset.name });
-        if (target.classList.contains('btn-del-dept')) {
-            if (confirm('Xóa Khoa này?')) apiCall(`${BASE_ACADEMIC}/department/${id}`, 'DELETE', {}, () => location.reload());
+        const btnEditMajor = target.closest('.btn-edit-major');
+        if (btnEditMajor) showModal('major', btnEditMajor.dataset.id, { name: btnEditMajor.dataset.name, dept_id: btnEditMajor.dataset.dept });
+        
+        const btnDelMajor = target.closest('.btn-del-major');
+        if (btnDelMajor) {
+            if (confirm('Xóa Ngành này?')) apiCall(`${BASE_ACADEMIC}/major/${btnDelMajor.dataset.id}`, 'DELETE', {}, () => location.reload());
         }
-        if (target.classList.contains('btn-edit-major')) showModal('major', id, { name: target.dataset.name, dept_id: target.dataset.dept });
-        if (target.classList.contains('btn-del-major')) {
-            if (confirm('Xóa Ngành này?')) apiCall(`${BASE_ACADEMIC}/major/${id}`, 'DELETE', {}, () => location.reload());
+        const btnEditCourse = target.closest('.btn-edit-course');
+        if (btnEditCourse) {
+            showModal('course', btnEditCourse.dataset.id, { name: btnEditCourse.dataset.name, code: btnEditCourse.dataset.code, credits: btnEditCourse.dataset.credits, lt: btnEditCourse.dataset.lt, th: btnEditCourse.dataset.th, periods: btnEditCourse.dataset.periods, cat: btnEditCourse.dataset.cat, major_id: btnEditCourse.dataset.major });
         }
-        if (target.classList.contains('btn-edit-course')) {
-            showModal('course', id, { name: target.dataset.name, code: target.dataset.code, credits: target.dataset.credits, lt: target.dataset.lt, th: target.dataset.th, periods: target.dataset.periods, cat: target.dataset.cat, major_id: target.dataset.major });
-        }
-        if (target.classList.contains('btn-del-course')) {
-            if (confirm('Xóa Học phần này?')) apiCall(`${BASE_ACADEMIC}/course/${id}`, 'DELETE', {}, () => location.reload());
+        const btnDelCourse = target.closest('.btn-del-course');
+        if (btnDelCourse) {
+            if (confirm('Xóa Học phần này?')) apiCall(`${BASE_ACADEMIC}/course/${btnDelCourse.dataset.id}`, 'DELETE', {}, () => location.reload());
         }
     });
 
@@ -261,7 +348,33 @@ document.addEventListener('DOMContentLoaded', function() {
     if (filterMajor) filterMajor.onchange = filterCourses;
     if (filterCat) filterCat.onchange = filterCourses;
 
-    document.addEventListener('change', function(e) {
+    // Filters & Search for students (DB Level)
+    const filterStudentDept = document.getElementById('filter-student-dept');
+    const searchStudentDb = document.getElementById('search-student-db');
+    const btnSearchStudent = document.getElementById('btn-search-student');
+
+    function triggerStudentFilter() {
+        const dept = filterStudentDept ? filterStudentDept.value : '';
+        const q = searchStudentDb ? searchStudentDb.value.trim() : '';
+        const url = new URL(window.location.href);
+        url.searchParams.set('page_std', '1');
+        if (dept) url.searchParams.set('dept_std', dept);
+        else url.searchParams.delete('dept_std');
+        if (q) url.searchParams.set('q_std', q);
+        else url.searchParams.delete('q_std');
+        window.location.href = url.toString();
+    }
+
+    if (filterStudentDept) filterStudentDept.onchange = triggerStudentFilter;
+    if (btnSearchStudent) btnSearchStudent.onclick = triggerStudentFilter;
+    if (searchStudentDb) {
+        searchStudentDb.onkeydown = function (e) {
+            if (e.key === 'Enter') triggerStudentFilter();
+        };
+    }
+
+
+    document.addEventListener('change', function (e) {
         if (e.target.classList.contains('import-excel')) {
             const input = e.target;
             if (!input.files.length) return;

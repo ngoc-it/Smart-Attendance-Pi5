@@ -8,7 +8,7 @@
 {% block content %}
 <div class="admin-container">
     <div class="admin-header-row" style="margin-bottom: 24px;">
-        <h2 style="border-bottom: none; margin-bottom: 0;">⚙️ Cấu hình hệ thống</h2>
+        <h2 style="border-bottom: none; margin-bottom: 0;"><i class="fa-solid fa-sliders" style="color: var(--primary); margin-right: 8px;"></i>Cấu hình hệ thống</h2>
     </div>
 
     <div class="card" style="max-width: 900px; margin: 0 auto;">
@@ -17,11 +17,11 @@
                 <!-- Nhóm AI -->
                 <div class="settings-group">
                     <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <i>🤖</i> Cấu hình nhận diện AI
+                        <i class="fa-solid fa-robot"></i> Cấu hình nhận diện AI
                     </h3>
                     
                     <div class="form-group">
-                        <label>Ngưỡng tin cậy (Threshold)</label>
+                        <label>Ngưỡng nhận diện (Match Threshold)</label>
                         <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
                             <input type="range" name="match_threshold" min="0.1" max="0.95" step="0.05" 
                                    value="{{ settings.match_threshold }}" 
@@ -35,12 +35,28 @@
                             • Khuyên dùng: <strong>0.65 - 0.75</strong>
                         </small>
                     </div>
+
+                    <div class="form-group" style="margin-top: 20px; border-top: 1px dashed #edf2f7; padding-top: 15px;">
+                        <label>Ngưỡng chống giả mạo (Liveness Threshold)</label>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                            <input type="range" name="liveness_threshold" min="0.1" max="0.95" step="0.05" 
+                                   value="{{ settings.liveness_threshold or '0.60' }}" 
+                                   oninput="updateLivenessDisplay(this.value)"
+                                   style="flex: 1;">
+                            <output id="liveness-output" style="font-weight: 700; width: 45px; text-align: center; color: var(--primary);">{{ settings.liveness_threshold or '0.60' }}</output>
+                        </div>
+                        <small style="color: #718096; font-size: 0.75rem; display: block; margin-top: 8px; line-height: 1.4;">
+                            • Thấp: Dễ thông qua nhưng dễ bị giả mạo qua ảnh/video. <br>
+                            • Cao: Chống giả mạo nghiêm ngặt hơn nhưng cần người thật đứng rõ. <br>
+                            • Khuyên dùng: <strong>0.50 - 0.65</strong>
+                        </small>
+                    </div>
                 </div>
 
                 <!-- Nhóm Thời gian -->
                 <div class="settings-group">
                     <h3 style="font-size: 1rem; color: var(--warning); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <i>⏰</i> Quy định thời gian
+                        <i class="fa-regular fa-clock"></i> Quy định thời gian
                     </h3>
                     
                     <div class="form-group">
@@ -67,7 +83,7 @@
                 <!-- Nhóm Thông tin -->
                 <div class="settings-group">
                     <h3 style="font-size: 1rem; color: var(--success); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <i>🏫</i> Thông tin hệ thống
+                        <i class="fa-solid fa-school"></i> Thông tin hệ thống
                     </h3>
                     
                     <div class="form-group">
@@ -79,7 +95,7 @@
                 <!-- Nhóm Trạng thái -->
                 <div class="settings-group">
                     <h3 style="font-size: 1rem; color: var(--danger); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <i>📡</i> Giám sát thiết bị
+                        <i class="fa-solid fa-satellite-dish"></i> Giám sát thiết bị
                     </h3>
                     
                     <div class="form-group">

@@ -1,0 +1,24 @@
+{
+    "system_info": {
+        "device": "Raspberry Pi 5",
+        "camera": "Sony IMX708 Camera Module 3",
+        "os": "Linux-6.12.75+rpt-rpi-2712-aarch64-with-glibc2.41",
+        "python_version": "3.13.5",
+        "git_commit": "a903283941aff72ba5c2cb42a34a9bcc5a77d7c4"
+    },
+    "library_versions": {
+        "opencv": "4.10.0",
+        "onnxruntime": "1.24.4",
+        "insightface": "0.7.3"
+    },
+    "ai_models": {
+        "face_recognition_model": "InsightFace buffalo_l (w600k_r50.onnx)",
+        "face_embedding_dimension": 512,
+        "liveness_model": "MiniFASNetV2 ONNX",
+        "face_detector": "YOLOv11 / InsightFace det_10g"
+    },
+    "experiment_setup": {
+        "logger_version": "1.0.0",
+        "boot_timestamp": "2026-09-15 22:47:36"
+    }
+}

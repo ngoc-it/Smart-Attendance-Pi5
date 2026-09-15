@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, session
 from app import db
 from app.core.auth_utils import admin_required
 from app.utils.excel_parser import parse_curriculum_excel
@@ -249,6 +249,12 @@ def preview_sessions(class_id):
 @admin_required
 def get_pending_makeups():
     requests = db.get_pending_makeup_requests()
+    return jsonify([dict(r) for r in requests])
+
+@academic_bp.route('/makeup/processed', methods=['GET'])
+@admin_required
+def get_processed_makeups():
+    requests = db.get_processed_makeup_requests()
     return jsonify([dict(r) for r in requests])
 
 @academic_bp.route('/makeup/approve', methods=['POST'])

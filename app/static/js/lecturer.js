@@ -95,12 +95,16 @@ function switchTab(tab) {
     // Buttons
     const btns = document.querySelectorAll('.tab-nav-btn');
     btns.forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    if (window.event && window.event.target) {
+        const btnTarget = window.event.target.closest('.tab-nav-btn');
+        if (btnTarget) btnTarget.classList.add('active');
+    }
 
     // Panes
     const panes = document.querySelectorAll('.tab-pane');
     panes.forEach(pane => pane.classList.remove('active'));
-    document.getElementById(`tab-${tab}`).classList.add('active');
+    const targetPane = document.getElementById(`tab-${tab}`);
+    if (targetPane) targetPane.classList.add('active');
 }
 
 function submitManualEnroll() {
@@ -194,16 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     }
 
-    // Modal click-outside
-    const actionModal = document.getElementById('action-modal');
-    if (actionModal) {
-        actionModal.onclick = (e) => { if (e.target === actionModal) closeActionModal(); };
-    }
 
-    const addStudentModal = document.getElementById('add-student-modal');
-    if (addStudentModal) {
-        addStudentModal.onclick = (e) => { if (e.target === addStudentModal) closeAddStudentModal(); };
-    }
 });
 // --- MAKE-UP CLASS LOGIC ---
 function openMakeupModal() {
@@ -248,20 +243,37 @@ function searchAvailableSlots() {
 }
 
 function submitMakeupRequest() {
-    const classId = document.getElementById('meta-data').dataset.classId;
+    const classSelect = document.getElementById('makeup-class-id');
+    const metaData = document.getElementById('meta-data');
+    
+    let classId = null;
+    if (classSelect && classSelect.value) {
+        classId = classSelect.value;
+    } else if (metaData && metaData.dataset && metaData.dataset.classId) {
+        classId = metaData.dataset.classId;
+    }
+
+    if (!classId) {
+        alert('Vui lòng chọn Lớp học phần!');
+        return;
+    }
+
     const date = document.getElementById('makeup-date').value;
     const num = document.getElementById('makeup-num-periods').value;
     const slotData = document.getElementById('makeup-slot-select').value;
     const reason = document.getElementById('makeup-reason').value;
     
-    if (!slotData) return;
+    if (!slotData) {
+        alert('Vui lòng chọn Slot & Phòng học trống!');
+        return;
+    }
     const [roomId, startPeriodId] = slotData.split('|');
     
     fetch('/api/makeup/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            class_id: classId,
+            class_id: parseInt(classId),
             date: date,
             num_periods: parseInt(num),
             room_id: parseInt(roomId),
@@ -272,6 +284,51 @@ function submitMakeupRequest() {
     .then(res => res.json())
     .then(data => {
         alert(data.message);
-        if (data.status === 'success') closeMakeupModal();
+        if (data.status === 'success') {
+            closeMakeupModal();
+            location.reload();
+        }
+    })
+    .catch(err => alert('Lỗi gửi yêu cầu!'));
+}
+
+// --- LEAVE REQUEST LOGIC ---
+function updateLeaveStatus(requestId, status) {
+    if (!confirm(`Bạn chắc chắn muốn ${status === 'Approved' ? 'duyệt' : 'từ chối'} đơn xin nghỉ này?`)) {
+        return;
+    }
+    fetch('/leave/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            request_id: requestId,
+            status: status
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const card = document.getElementById(`leave-req-${requestId}`);
+            if (card) {
+                card.style.opacity = 0;
+                setTimeout(() => {
+                    card.remove();
+                    const list = document.getElementById('leave-requests-list');
+                    const remainingCards = list.querySelectorAll('[id^="leave-req-"]');
+                    if (remainingCards.length === 0) {
+                        list.innerHTML = '<div style="padding: 20px; text-align: center; color: #888; font-size: 0.9rem;">Không có đơn xin nghỉ nào cần duyệt</div>';
+                    }
+                }, 200);
+            }
+        } else {
+            alert('Lỗi cập nhật trạng thái đơn phép!');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Lỗi kết nối server!');
     });
 }
+

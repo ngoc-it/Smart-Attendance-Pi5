@@ -92,7 +92,7 @@ function startEnroll() {
 
                     // Hiển thị Overlay Thành công
                     showSuccessOverlay(name, studentId);
-                    unlockUI("Hoàn thành! ✅");
+                    unlockUI("Hoàn thành");
                 } else if (data.status === 'error') {
                     clearInterval(pollInterval);
                     showError(data.message);

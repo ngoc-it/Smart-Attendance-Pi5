@@ -38,9 +38,10 @@ def index():
         student_ids = [s[0] for s in students]
         face_status = db.get_face_registration_status(student_ids)
     
-    # Thời khóa biểu & Nghỉ phép luôn lấy để hiển thị ở Hub hoặc Detail
+    # Thời khóa biểu, Nghỉ phép & Đơn dạy bù luôn lấy để hiển thị ở Hub hoặc Detail
     schedule = db.get_user_schedule(user_id)
     leave_requests = db.get_leave_requests(user_id)
+    makeup_requests = db.get_user_makeup_requests(user_id)
     
     pagination = {
         "current": page,
@@ -56,6 +57,7 @@ def index():
                            total_students=total_students,
                            schedule=schedule,
                            leave_requests=leave_requests,
+                           makeup_requests=makeup_requests,
                            face_status=face_status,
                            classes=classes,
                            selected_class_id=class_id,
@@ -334,7 +336,7 @@ def export_summary_excel():
 def video_feed():
     def generate():
         while True:
-            time.sleep(0.04) # 25 FPS
+            time.sleep(0.055) # ~18 FPS (Tối ưu băng thông mạng LAN/Wi-Fi)
             img = None
             
             # TRUY XUẤT TỪ SHARED
@@ -348,9 +350,18 @@ def video_feed():
                 for res in results:
                     x1, y1, x2, y2 = res['box']
                     name = res['id']
-                    cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(img, name, (x1, y1 - 10), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                    
+                    # Kiểm tra liveness nếu có
+                    liveness = res.get('liveness', 'Unknown')
+                    is_real = res.get('is_real', True)
+                    
+                    # Bounding box color: Xanh lá nếu Live, Đỏ nếu là Spoof/Fake
+                    color = (0, 255, 0) if is_real else (0, 0, 255)
+                    label = f"{name} ({liveness})" if liveness != 'Unknown' else name
+                    
+                    cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(img, label, (x1, y1 - 10), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
             else:
                 # Màn hình chờ nếu camera chưa có data trong shared
                 img = np.zeros((480, 640, 3), np.uint8)
@@ -358,10 +369,17 @@ def video_feed():
                 cv2.putText(img, "CONNECTING VIA SHARED MEMORY...", (100, 240), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
-            ret, buffer = cv2.imencode('.jpg', img)
+            # Nén JPEG chất lượng 70% để tiết kiệm 50% dung lượng băng thông truyền qua Web
+            ret, buffer = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
             if ret:
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                try:
+                    yield (b'--frame\r\n'
+                           b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                except (GeneratorExit, BrokenPipeError, ConnectionResetError, OSError):
+                    # Máy client ngoài ngắt kết nối web stream -> Thoát vòng lặp an toàn
+                    break
+                except Exception:
+                    break
     
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
@@ -372,18 +390,15 @@ def delete_student(student_id):
         import os
         from config import Config
         
-        # 1. Delete from DB
+        # 1. Soft Delete in DB (set is_active = 0, remove from active classes, preserve attendance logs)
         db.delete_student(student_id)
         
-        # 2. Delete embedding file
-        emb_path = os.path.join(Config.EMBEDDINGS_DIR, f"{student_id}.npy")
-        if os.path.exists(emb_path):
-            os.remove(emb_path)
-            
-        # 3. Reload AI engine database
+        # 2. Keep vector file (.npy) on disk for instant account restoration capability
+        
+        # 3. Reload AI engine database to unindex inactive vector from RAM
         ai_engine.load_database()
         
-        return {"status": "success", "message": "Deleted successfully"}
+        return {"status": "success", "message": "Đã ngưng hoạt động sinh viên (Xóa mềm và giữ nguyên lịch sử dữ liệu)."}
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
 
@@ -474,4 +489,23 @@ def submit_makeup_request():
     if success:
         return jsonify({"status": "success", "message": "Đã gửi yêu cầu dạy bù, vui lòng chờ Admin phê duyệt."})
     return jsonify({"status": "error", "message": "Lỗi gửi yêu cầu"}), 500
+
+@attendance_bp.route('/leaves')
+@lecturer_required
+def leaves_page():
+    user_id = session.get('user_id')
+    leave_requests = db.get_leave_requests(user_id)
+    return render_template('leaves.html',
+                           leave_requests=leave_requests,
+                           now_date=datetime.now().strftime("%d/%m/%Y"))
+
+@attendance_bp.route('/schedule')
+@lecturer_required
+def schedule_page():
+    user_id = session.get('user_id')
+    schedule = db.get_user_schedule(user_id)
+    return render_template('schedule.html',
+                           schedule=schedule,
+                           now_date=datetime.now().strftime("%d/%m/%Y"))
+
 

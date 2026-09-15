@@ -15,7 +15,8 @@ echo "------------------------------------------------"
 sudo bash -c "cat > $SERVICE_FILE" <<EOF
 [Unit]
 Description=Smart Attendance Web Application
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 User=nkn0901

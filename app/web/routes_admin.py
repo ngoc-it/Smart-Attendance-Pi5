@@ -7,27 +7,19 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 @admin_bp.route('/')
 @admin_required
 def dashboard():
-    page_gv = request.args.get('page_gv', 1, type=int)
     page_cls = request.args.get('page_cls', 1, type=int)
     per_page = 10
     
-    lecturers = db.get_all_lecturers(page=page_gv, per_page=per_page)
-    total_gv = db.get_lecturer_count()
-    
     classes = db.get_all_classes(page=page_cls, per_page=per_page)
     total_cls = db.get_class_count()
+    
+    # Lấy toàn bộ giảng viên phục vụ modal Phân công (không phân trang)
+    all_lecturers = db.get_all_lecturers(page=1, per_page=1000)
     
     # Lấy dữ liệu danh mục cho Quản trị hệ thống
     depts = db.get_all_departments()
     majors = db.get_all_majors()
     courses = db.get_all_courses()
-    
-    pagination_gv = {
-        "current": page_gv,
-        "total_pages": (total_gv + per_page - 1) // per_page,
-        "has_next": page_gv * per_page < total_gv,
-        "has_prev": page_gv > 1
-    }
     
     pagination_cls = {
         "current": page_cls,
@@ -37,19 +29,68 @@ def dashboard():
     }
     
     return render_template('admin_dashboard.html', 
-                           lecturers=lecturers, 
                            classes=classes,
                            depts=depts,
                            majors=majors,
                            courses=courses,
-                           pag_gv=pagination_gv,
+                           all_lecturers=all_lecturers,
                            pag_cls=pagination_cls)
+
+
+@admin_bp.route('/accounts', methods=['GET'])
+@admin_required
+def accounts_page():
+    page_gv = request.args.get('page_gv', 1, type=int)
+    page_std = request.args.get('page_std', 1, type=int)
+    dept_std = request.args.get('dept_std', '')
+    q_std = request.args.get('q_std', '')
+    per_page = 10
+    
+    lecturers = db.get_all_lecturers(page=page_gv, per_page=per_page)
+    total_gv = db.get_lecturer_count()
+    
+    students = db.get_all_students(
+        page=page_std, 
+        per_page=per_page, 
+        dept_prefix=dept_std if dept_std else None, 
+        search_query=q_std if q_std else None
+    )
+    total_std = db.get_student_count(
+        dept_prefix=dept_std if dept_std else None, 
+        search_query=q_std if q_std else None
+    )
+    
+    pagination_gv = {
+        "current": page_gv,
+        "total_pages": (total_gv + per_page - 1) // per_page,
+        "has_next": page_gv * per_page < total_gv,
+        "has_prev": page_gv > 1
+    }
+    
+    pagination_std = {
+        "current": page_std,
+        "total_pages": (total_std + per_page - 1) // per_page,
+        "has_next": page_std * per_page < total_std,
+        "has_prev": page_std > 1
+    }
+    
+    return render_template('admin_accounts.html', 
+                           lecturers=lecturers, 
+                           students=students,
+                           pag_gv=pagination_gv,
+                           pag_std=pagination_std,
+                           dept_std=dept_std,
+                           q_std=q_std)
+
 
 @admin_bp.route('/lecturer', methods=['POST'])
 @admin_required
 def add_lecturer():
     data = request.json
-    success = db.create_lecturer(data['username'], data['password'], data['name'], data.get('code'))
+    password = data.get('password')
+    if not password or not password.strip():
+        password = getattr(Config, 'DEFAULT_LECTURER_PASSWORD', 'SmartAttendance@2026')
+    success = db.create_lecturer(data['username'], password, data['name'], data.get('code'))
     if success:
         return jsonify({"status": "success", "message": "Thêm giảng viên thành công"})
     return jsonify({"status": "error", "message": "Tên đăng nhập đã tồn tại"}), 400
@@ -106,12 +147,51 @@ def get_class_students(class_id):
     if not cls:
         return jsonify({"status": "error", "message": "Lớp không tồn tại"}), 404
     # Sử dụng hàm chuẩn để lấy sinh viên theo class_id (đồng bộ với GV)
-    students = db.get_all_students(class_id=class_id, per_page=1000)
+    students_raw = db.get_all_students(class_id=class_id, per_page=1000)
+    students_list = []
+    for s in students_raw:
+        if isinstance(s, dict):
+            students_list.append(s)
+        elif isinstance(s, (list, tuple)):
+            students_list.append({
+                "id": s[0],
+                "name": s[1] if len(s) > 1 else "",
+                "dob": s[2] if len(s) > 2 else "",
+                "student_class": s[3] if len(s) > 3 else ""
+            })
     return jsonify({
         "status": "success",
+        "class_id": class_id,
         "class_name": cls['name'],
-        "students": [dict(s) for s in students]
+        "students": students_list
     })
+
+@admin_bp.route('/class/<int:class_id>/student/<string:student_id>', methods=['DELETE'])
+@admin_required
+def remove_student_from_class(class_id, student_id):
+    db.remove_student_from_class(class_id, student_id)
+    return jsonify({"status": "success", "message": "Đã loại sinh viên khỏi lớp học phần"})
+
+@admin_bp.route('/student', methods=['POST'])
+@admin_required
+def add_student():
+    data = request.json
+    db.enroll_student(data['student_id'], data['name'], data['dob'], data['student_class'])
+    return jsonify({"status": "success", "message": "Thêm sinh viên thành công"})
+
+@admin_bp.route('/student/<string:student_id>', methods=['DELETE'])
+@admin_required
+def delete_student(student_id):
+    db.delete_student(student_id)
+    return jsonify({"status": "success"})
+
+@admin_bp.route('/student/<string:student_id>', methods=['PUT'])
+@admin_required
+def update_student(student_id):
+    data = request.json
+    db.update_student_info(student_id, data['name'], data['dob'], data['student_class'])
+    return jsonify({"status": "success", "message": "Cập nhật sinh viên thành công"})
+
 
 # ---- ASSIGNMENT ROUTES ----
 @admin_bp.route('/lecturer/<int:user_id>/classes', methods=['GET'])
@@ -124,10 +204,22 @@ def get_lecturer_classes(user_id):
 @admin_required
 def assign_class():
     data = request.json
-    success = db.assign_class_to_user(data['user_id'], data['class_id'])
-    if success:
-        return jsonify({"status": "success"})
-    return jsonify({"status": "error", "message": "Lớp học đã được gán cho GV này"}), 400
+    class_id = data.get('class_id')
+    user_id = data.get('user_id')
+
+    if not class_id:
+        return jsonify({"status": "error", "message": "Thiếu mã lớp học!"}), 400
+
+    # Xóa phân công cũ trước khi cập nhật phân công mới
+    db.remove_all_lecturers_from_class(class_id)
+
+    if user_id:
+        success = db.assign_class_to_user(int(user_id), int(class_id))
+        if success:
+            return jsonify({"status": "success", "message": "Cập nhật phân công thành công!"})
+        return jsonify({"status": "error", "message": "Lỗi gán giảng viên"}), 400
+    else:
+        return jsonify({"status": "success", "message": "Đã hủy phân công giảng viên!"})
 
 @admin_bp.route('/lecturer/unassign', methods=['POST'])
 @admin_required
@@ -174,6 +266,7 @@ def export_students():
 @admin_required
 def import_students():
     import csv
+    import unicodedata
     from io import TextIOWrapper
     if 'file' not in request.files:
         return jsonify({"status": "error", "message": "Không tìm thấy file"}), 400
@@ -184,12 +277,27 @@ def import_students():
         csv_file = TextIOWrapper(file, encoding='utf-8')
         reader = csv.DictReader(csv_file)
         count = 0
+        
+        def clean_val(val):
+            if val is None:
+                return ""
+            return unicodedata.normalize('NFC', str(val)).strip()
+
         for row in reader:
-            s_id = row.get('MSSV')
-            s_name = row.get('Họ Tên')
-            s_dob = row.get('Ngày sinh', '')
-            s_class = row.get('Lớp', '')
+            normalized_row = {clean_val(k): clean_val(v) for k, v in row.items() if k is not None}
+            
+            s_id = normalized_row.get('MSSV') or normalized_row.get('Mã SV') or normalized_row.get('Mã số sinh viên')
+            s_name = normalized_row.get('Họ Tên') or normalized_row.get('Họ và Tên') or normalized_row.get('Họ lót Tên')
+            s_dob = normalized_row.get('Ngày sinh', '')
+            s_class = normalized_row.get('Lớp', '') or normalized_row.get('Lớp SV')
+            
             if s_id and s_name:
+                # Skip header template rows
+                if s_id.lower() in ['mssv', 'mã sv', 'ma sv', 'mã số sinh viên', 'ma so sinh vien']:
+                    continue
+                if s_name.lower() in ['họ tên', 'ho ten', 'họ và tên', 'ho va ten', 'họ lót tên', 'ho lot ten']:
+                    continue
+                    
                 if not db.check_student_exists(s_id):
                     db.enroll_student(s_id, s_name, s_dob, s_class)
                     count += 1

@@ -1,0 +1,329 @@
+NGHIÊN CỨU VÀ TRIỂN KHAI HỆ THỐNG QUẢN LÝ ĐIỂM DANH THÔNG MINH TÍCH HỢP NHẬN DIỆN KHUÔN MẶT TRÊN NỀN TẢNG TÍNH TOÁN BIÊN RASPBERRY PI 5
+
+RESEARCH AND IMPLEMENTATION OF A SMART ATTENDANCE MANAGEMENT SYSTEM INTEGRATING FACE RECOGNITION ON RASPBERRY PI 5 EDGE COMPUTING PLATFORM
+
+Tóm tắt 
+
+Công tác điểm danh sinh viên truyền thống tại các trường đại học thường tiêu tốn thời gian và tiềm ẩn nguy cơ gian lận. Nghiên cứu này hướng tới thiết kế và triển khai hệ thống phần mềm quản lý điểm danh tích hợp, vận hành cục bộ trên vi máy tính Raspberry Pi 5. Phương pháp nghiên cứu sử dụng quy trình điểm danh chạm nút trên Kiosk UI, trong đó thao tác của sinh viên kích hoạt quá trình thu nhận hình ảnh, kết hợp mô hình InsightFace (buffalo_l) để trích xuất vector đặc trưng 512 chiều và chuẩn hóa L2, mạng nơ-ron MiniFASNetV2 để kiểm tra chống giả mạo 2D, cùng cơ sở dữ liệu SQLite gồm 19 bảng. Kết quả triển khai cho thấy hệ thống có khả năng thực hiện các chức năng quản lý đào tạo, đối soát danh sách lớp đang hoạt động và xử lý dữ liệu sinh trắc học cục bộ trên thiết bị biên. Các kết quả này cho thấy tính khả thi của giải pháp điểm danh tại biên, đồng thời hỗ trợ tự động hóa quy trình quản lý chuyên cần và hạn chế việc truyền dữ liệu sinh trắc học ra ngoài thiết bị trong môi trường giáo dục đại học.
+
+Từ khóa chống giả mạo, điểm danh sinh viên, nhận diện khuôn mặt, Raspberry Pi 5, trí tuệ nhân tạo, xử lý tại biên.
+
+Abstract
+
+Traditional student attendance checking in universities is often time-consuming and may be susceptible to proxy attendance. This study aims to design and implement SmartAttendance, an integrated attendance management software system operating locally on a Raspberry Pi 5 single-board computer. The proposed methodology employs a user-initiated, touch-triggered Kiosk UI attendance workflow, in which the student's interaction initiates image acquisition, combined with an InsightFace (buffalo_l) model for extracting 512-dimensional face embeddings with L2 normalization, a MiniFASNetV2 neural network for 2D anti-spoofing verification, and a 19-table SQLite database. The implementation results show that the system can support academic management functions, active class-list authorization, and local biometric data processing at the edge device. These results indicate the feasibility of an edge-based attendance management solution while supporting the automation of attendance management and limiting the transmission of biometric data outside the local device in higher education environments.
+
+Keywords anti-spoofing, attendance management, edge computing, face recognition, Raspberry Pi 5, student attendance.
+
+1. GIỚI THIỆU (INTRODUCTION)
+
+1.1. Bối cảnh và vấn đề điểm danh
+
+Trong các cơ sở giáo dục đại học, công tác quản lý chuyên cần của sinh viên có vai trò quan trọng trong việc hỗ trợ duy trì kỷ luật đào tạo và theo dõi quá trình học tập. Tuy nhiên, các phương pháp điểm danh truyền thống như gọi tên theo danh sách giấy, ký tên thủ công hoặc sử dụng thẻ từ vẫn tồn tại một số hạn chế. Những phương pháp này có thể làm gia tăng thời gian dành cho hoạt động điểm danh, tiềm ẩn nguy cơ xảy ra các hình thức điểm danh thay như điểm danh hộ, ký tên hộ hoặc cho mượn thẻ, đồng thời phát sinh thêm công sức trong quá trình nhập và đối soát dữ liệu với hệ thống quản lý đào tạo [1], [2]. Một số nghiên cứu cho thấy hoạt động điểm danh thủ công có thể chiếm một phần đáng kể thời lượng tiết học. Do đó, việc ứng dụng các phương pháp tự động hóa dựa trên công nghệ sinh trắc học, đặc biệt là nhận diện khuôn mặt, được xem là một hướng tiếp cận có tiềm năng nhằm hỗ trợ nâng cao hiệu quả quản lý chuyên cần trong môi trường giáo dục đại học.
+
+1.2. Các phương pháp điểm danh bằng nhận diện khuôn mặt
+
+Nhận diện khuôn mặt dựa trên kỹ thuật Thị giác máy tính (Computer Vision) và Trí tuệ nhân tạo (AI) đã được ứng dụng rộng rãi vào các hệ thống điểm danh [3]. Sự phát triển từ các mô hình truyền thống đến các mạng nơ-ron tích chập sâu như FaceNet [3], ArcFace [1] và bộ công cụ InsightFace đã nâng cao vượt bậc độ chính xác nhận diện. Bên cạnh đó, việc ứng dụng Trí tuệ nhân tạo tại biên (Edge AI) trên vi máy tính như Raspberry Pi [11], [14], [15] kết hợp với các mạng chống giả mạo siêu nhẹ MiniFASNetV2 [4] thực thi bằng ONNX Runtime đã mở ra khả năng xử lý sinh trắc học trực tiếp tại chỗ mà không cần cảm biến đắt tiền.
+
+1.3. Hạn chế của các hệ thống hiện có
+
+Mặc dù nhận diện khuôn mặt đã được ứng dụng trong nhiều nghiên cứu về điểm danh tự động, một số giải pháp vẫn đặt ra các vấn đề liên quan đến kiến trúc triển khai, sử dụng tài nguyên và khả năng tích hợp với nghiệp vụ quản lý đào tạo. Trong phạm vi nghiên cứu này, các hạn chế được xem xét gồm:
+
+Phụ thuộc vào Điện toán đám mây (Cloud): Một số hệ thống dựa trên kiến trúc điện toán đám mây yêu cầu kết nối mạng để truyền hình ảnh hoặc dữ liệu đặc trưng đến máy chủ xử lý. Cách tiếp cận này có thể làm phát sinh độ trễ phụ thuộc vào điều kiện mạng và đặt ra các yêu cầu bổ sung đối với việc bảo vệ dữ liệu sinh trắc học trong quá trình truyền và lưu trữ [4], [5]. Đối với môi trường giáo dục, việc xử lý dữ liệu trực tiếp tại thiết bị biên có thể là một hướng tiếp cận nhằm hạn chế nhu cầu truyền dữ liệu sinh trắc học ra ngoài hệ thống cục bộ.
+
+Sử dụng tài nguyên trong cơ chế nhận diện liên tục: Đối với các hệ thống sử dụng cơ chế giám sát hoặc quét thụ động, quá trình phát hiện và nhận diện có thể được thực hiện liên tục trên các khung hình từ camera. Việc duy trì suy luận AI thường xuyên có thể làm tăng mức sử dụng tài nguyên tính toán và phát sinh các trường hợp xử lý những người không chủ động thực hiện thao tác điểm danh. Do đó, cơ chế kích hoạt điểm danh theo thao tác của người dùng có thể được xem xét như một phương án nhằm giảm các lần suy luận không cần thiết.
+
+Thiếu liên kết với nghiệp vụ học thuật: Một số nghiên cứu tập trung chủ yếu vào bài toán nhận diện khuôn mặt hoặc đánh giá thuật toán, trong khi các chức năng quản lý đào tạo như lớp học phần, thời khóa biểu, phiên học và nhật ký điểm danh có thể chưa được tích hợp đầy đủ trong cùng một hệ thống [10]. Khoảng trống này cho thấy nhu cầu phát triển giải pháp không chỉ tập trung vào nhận diện khuôn mặt mà còn kết hợp xử lý sinh trắc học với các nghiệp vụ quản lý chuyên cần trong thực tế.
+
+1.4. Mục tiêu và đóng góp của nghiên cứu
+
+Nhằm giải quyết các vấn đề được xác định ở trên, nghiên cứu này đề xuất giải pháp phần mềm quản lý điểm danh tích hợp SmartAttendance với bốn đóng góp chính:
+
+C. Xây dựng hệ thống điểm danh nhận diện khuôn mặt: Phát triển hệ thống điểm danh dựa trên nhận diện khuôn mặt, triển khai và xử lý trực tiếp tại biên trên vi máy tính Raspberry Pi 5, qua đó giảm sự phụ thuộc vào hạ tầng xử lý bên ngoài.
+
+C2.Tích hợp nhận diện khuôn mặt và kiểm tra chống giả mạo: Tích hợp mô hình InsightFace (buffalo_l) để trích xuất và so khớp vector đặc trưng khuôn mặt, kết hợp mạng MiniFASNetV2 được triển khai thông qua ONNX Runtime để thực hiện kiểm tra tính sống và chống giả mạo 2D.
+
+C3. Thiết kế cơ chế điểm danh chủ động bằng Kiosk UI: Xây dựng cơ chế điểm danh chạm nút (Student-Initiated / Touch-Triggered Attendance), trong đó thao tác của sinh viên trên giao diện Kiosk là điều kiện kích hoạt quá trình thu nhận hình ảnh và suy luận AI, hạn chế việc xử lý các đối tượng không chủ động thực hiện điểm danh.
+
+C4. Tích hợp xử lý sinh trắc học với quản lý nghiệp vụ đào tạo:** Kết hợp chức năng nhận diện khuôn mặt với cơ sở dữ liệu SQLite gồm 19 bảng và các phân hệ quản lý lớp học phần, ca học đang hoạt động, đơn nghỉ phép, đơn dạy bù và xuất báo cáo Excel, hướng tới một quy trình quản lý chuyên cần được tích hợp trong cùng hệ thống.
+
+2. PHƯƠNG PHÁP NGHIÊN CỨU
+
+2.1. Kiến trúc tổng thể của hệ thống
+
+Hệ thống SmartAttendance được thiết kế theo mô hình kiến trúc phần mềm 5 tầng khép kín. Luồng dữ liệu vận hành từ cảm biến phần cứng qua bộ đệm khung hình đến phần mềm Flask và cơ sở dữ liệu được thể hiện trong Hình 1.
+
+Hình 1. Sơ đồ kiến trúc tổng thể 5 tầng của hệ thống phần mềm điểm danh SmartAttendance
+
+2.2. Thiết bị, phần mềm và môi trường triển khai
+
+Cấu hình phần cứng, phần mềm và môi trường thực thi của hệ thống được tổng hợp trong Bảng 1.
+
+Bảng 1. Cấu hình phần cứng và phần mềm của hệ thống.
+
+Thành phần
+
+Cấu hình chi tiết
+
+Vi máy tính (Edge device)
+
+Raspberry Pi 5 (Broadcom BCM2712 Quad-core ARM Cortex-A76 @ 2.4GHz, RAM 4GB/8GB)
+
+Cảm biến hình ảnh (Camera)
+
+Sony IMX708 Camera Module 3 
+
+Hệ điều hành (OS)
+
+Raspberry Pi OS (Linux 64-bit)
+
+Ngôn ngữ lập trình
+
+Python 3.13.5
+
+Web Framework
+
+Flask 3.1.1
+
+Cơ sở dữ liệu
+
+SQLite 3 (chế độ WAL, 19 bảng quan hệ)
+
+AI Inference Engine
+
+ONNX Runtime CPU / PyTorch
+
+Thị giác máy tính
+
+OpenCV 4.10.0 / Picamera2
+
+Nhận diện khuôn mặt
+
+InsightFace (bộ mô hình buffalo_l trích xuất vector 512 chiều)
+
+Chống giả mạo 2D
+
+MiniFASNetV2 ONNX Runtime (kiểm tra liveness RGB)
+
+Mô hình phát hiện khuôn mặt
+
+YOLOv11
+
+2.3. Thiết kế nền tảng web và các chức năng quản lý
+
+Phần mềm SmartAttendance tích hợp hệ sinh thái các phân hệ quản lý phát triển trên nền Flask Web Framework, được khái quát tổng thể trong Hình X.
+
+Nền tảng Web Flask kết nối trực tiếp với 6 phân hệ nghiệp vụ quản lý chính:
+
+Hình 2. Các chức năng quản lý trên Webserver
+
+Phân hệ quản lý người dùng và phân quyền:Đảm nhiệm việc xác thực tài khoản người dùng trong bảng users, phân định các vai trò Quản trị viên (Admin) và Giảng viên (Lecturer), đồng thời sử dụng cơ chế băm mật khẩu thông qua các thuật toán được hỗ trợ bởi Werkzeug, như pbkdf2:sha256 hoặc `scrypt.
+
+Phân hệ quản lý cấu trúc đào tạo:Cho phép khởi tạo, cập nhật và quản lý các thành phần của cấu trúc đào tạo, bao gồm Khoa chuyên môn (departments), Chuyên ngành đào tạo (majors), Học phần (courses), Lớp học phần (classes), Học kỳ (semesters), Tiết học (periods) và Phòng học (rooms).
+
+Phân hệ quản lý sinh viên và lớp học: Đảm nhiệm việc lưu trữ thông tin sinh viên trong bảng students và quản lý việc phân công sinh viên vào các lớp học phần thông qua bảng quan hệ class_students.
+
+Phân hệ quản lý lịch học và buổi học: Quản lý thời khóa biểu định kỳ theo tuần thông qua bảng schedules, đồng thời hỗ trợ khởi tạo các buổi học thực tế trong ngày thông qua bảng class_sessions. Hệ thống sử dụng hàm get_active_session() để xác định ca học đang diễn ra dựa trên thông tin về thời gian và phòng học, từ đó làm cơ sở cho việc xác định phiên điểm danh.
+
+Phân hệ quản lý điểm danh: Ghi nhận nhật ký điểm danh trong bảng attendance_logs, lưu trữ thông tin về thời điểm, sinh viên, lớp học và trạng thái điểm danh như IN, OUT, vắng mặt hoặc đi muộn theo cấu hình của hệ thống. Phân hệ cũng liên kết với tệp ảnh snapshot được tạo trong quá trình điểm danh và hỗ trợ xuất dữ liệu dưới các định dạng Excel/CSV.
+
+Phân hệ quản lý yêu cầu dạy bù: Tiếp nhận và xử lý yêu cầu dạy bù của giảng viên thông qua bảng makeup_requests, cho phép Quản trị viên xem xét và phê duyệt. Khi yêu cầu được thông qua, hệ thống có thể tạo phiên học tương ứng trong cơ sở dữ liệu để phục vụ việc mở phiên điểm danh Kiosk cho sinh viên.
+
+2.4. Thu nhận và đăng ký dữ liệu khuôn mặt
+
+Hình 3. Quy trình đăng kí dữ liệu khuôn mặt
+
+Quy trình đăng ký mẫu sinh viên mới yêu cầu thu thập đủ N=30 khung hình hợp lệ liên tiếp (đồng thời phát hiện 01 mặt và qua liveness). Vector đặc trưng đại diện cuối cùng  lưu vào CSDL là trung bình đại số của 30 vector thành phần:
+
+ (1)
+
+Trong đó:
+
+(): vector đặc trưng đại diện cuối cùng của sinh viên.
+
+(): vector đặc trưng 512 chiều, đã chuẩn hóa L2, của khung hình thứ (k).
+
+(k=1) đến 30: có tổng cộng 30 khung hình hợp lệ.
+
+(): chia tổng của 30 vector cho 30 để lấy giá trị trung bình.
+
+2.5. Nhận diện khuôn mặt và chống giả mạo
+
+Hình 4. Kiến trúc xử lý hình ảnh của hệ thống
+
+Kiến trúc xử lý hình ảnh của hệ thống được chia thành hai phân hệ, đảm nhiệm hai chức năng :
+
+Phân hệ hận diện khuôn mặt (InsightFace)
+
+Phân hệ chịu trách nhiệm trích xuất mã sinh trắc học và xác định danh tính sinh viên:
+
+Trích xuất đặc trưng 512D: Mô hình InsightFace (buffalo_l) tự động phát hiện, căn chỉnh khuôn mặt và trích xuất vector đặc trưng 
+
+Chuẩn hóa L2-norm: Vector đặc trưng được chuẩn hóa về độ dài đơn vị: 
+
+So khớp Cosine Similarity: So sánh độ tương đồng góc giữa vector vừa trích xuất  và vector mẫu  lưu trong CSDL:  
+
+Xác thực danh tính thành công khi độ tương đồng đạt ngưỡng .
+
+2.5.2. Phân hệ Chống giả mạo (MiniFASNetV2)
+
+Phân hệ đóng vai trò là hàng rào bảo vệ sinh thể (Liveness Detection), độc lập kiểm tra xem khuôn mặt xuất hiện trước camera là người thật hay ảnh giả mạo (ảnh in giấy, video/ảnh trên màn hình điện thoại):
+
+Crop mặt 80x80px: Trích xuất riêng vùng ảnh khuôn mặt và resize về kích thước chuẩn  pixels.
+
+Mô hình MiniFASNetV2 ONNX: Đưa dữ liệu ảnh crop qua mạng nơ-ron trọng lượng nhẹ MiniFASNetV2 chạy trên nền ONNX Runtime CPU.
+
+Đánh giá Liveness: Mô hình tính toán điểm tin cậy sinh thể . Yêu cầu xác thực sinh thể hợp lệ bắt buộc đạt ngưỡng: 
+
+2.6. Quy trình điểm danh trên Kiosk
+
+Hình 5. Sơ đồ chi tiết quy trình điểm danh và thu nhận ảnh và xử lý
+
+2.7. Thiết kế cơ sở dữ liệu và quản lý dữ liệu
+
+Cơ sở dữ liệu SQLite lưu trữ bảng dữ liệu quan hệ chặt chẽ:
+
+departments: Lưu danh sách các Khoa chuyên môn trong nhà trường.
+
+majors: Lưu thông tin các Chuyên ngành đào tạo trực thuộc từng Khoa.
+
+courses: Lưu danh mục các Học phần / Môn học trong chương trình đào tạo (mã môn, số tín chỉ, tổng số tiết).
+
+semesters: Lưu thông tin các Học kỳ trong năm học (ngày bắt đầu, ngày kết thúc, cờ học kỳ hiện tại).
+
+periods: Lưu quy định khung giờ chuẩn của các Tiết học trong ngày (từ Tiết 1 đến Tiết 10).
+
+rooms: Lưu danh sách các Phòng học trong nhà trường (sức chứa, trạng thái gắn camera).
+
+classes: Lưu thông tin các Lớp học phần mở ra trong học kỳ (mã lớp học phần, môn học, học kỳ, giảng viên).
+
+students: Lưu hồ sơ thông tin cá nhân của sinh viên.
+
+class_students: Lưu danh sách sinh viên thuộc từng lớp học phần (bảng quan hệ N:M).
+
+users: Lưu tài khoản đăng nhập và phân quyền của Quản trị viên (Admin) và Giảng viên.
+
+user_classes: Lưu danh sách phân công giảng viên phụ trách giảng dạy các lớp học phần (bảng quan hệ N:M).
+
+schedules: Lưu Thời khóa biểu gốc hàng tuần của các lớp học phần (thứ trong tuần, tiết học, phòng học).
+
+class_sessions: Lưu thông tin các Ca học / Buổi học thực tế diễn ra cụ thể theo từng ngày.
+
+attendance_logs: Lưu nhật ký chi tiết lịch sử mỗi lượt điểm danh (thời gian, trạng thái IN/OUT/Trễ, ảnh snapshot lưu vết).
+
+makeup_requests: Lưu các Đơn xin đăng ký dạy bù do giảng viên gửi lên hệ thống.
+
+holidays: Lưu danh sách các Ngày nghỉ lễ toàn trường để hệ thống tự động bỏ qua không tạo ca học.
+
+device_payloads: Lưu hàng chờ các lệnh đồng bộ dữ liệu giữa máy chủ và thiết bị Kiosk tại phòng học.
+
+settings: Lưu các tham số cấu hình hệ thống dạng Key-Value (ngưỡng so khớp AI, ngưỡng chống giả mạo, giới hạn đi muộn).
+
+Sơ đồ quan hệ thực thể ERD của cơ sở dữ liệu SQLite trên máy tính biên Raspberry Pi 5
+
+3. KẾT QUẢ VÀ THẢO LUẬN (RESULTS AND DISCUSSIONS)
+
+3.1. Kết quả triển khai hệ thống
+
+Hệ thống đã triển khai hoàn chỉnh giao diện Kiosk UI tại phòng học và giao diện Web Admin quản trị.
+
+[HÌNH 3 - CHÈN GIAO DIỆN KIOSK ĐIỂM DANH]
+
+Hình 3. Giao diện màn hình cảm ứng Kiosk UI hiển thị ca học hiện tại và nút chạm điểm danh.
+
+[HÌNH 4 - CHỜ TÁC GIẢ CHÈN GIAO DIỆN QUẢN LÝ NHẬT KÝ ĐIỂM DANH]
+
+Hình 4. Giao diện Web Admin theo dõi nhật ký điểm danh chi tiết kèm hình ảnh lưu vết snapshot.
+
+3.2. Kết quả nhận diện khuôn mặt
+
+Các chỉ số đo kiểm định lượng về độ chính xác nhận diện sinh trắc học khuôn mặt được thiết lập nhãn khung chờ thực nghiệm minh bạch trong Bảng 2.
+
+Bảng 2. Bảng khung chỉ số thực nghiệm hiệu năng nhận diện sinh trắc học.
+
+Chỉ số đo kiểm thực nghiệm
+
+Giá trị kết quả
+
+Độ chính xác tổng thể (Accuracy)
+
+[CHỜ THỰC NGHIỆM ACCURACY]
+
+Độ chính xác dự báo (Precision)
+
+[CHỜ THỰC NGHIỆM PRECISION]
+
+Tỷ lệ bao phủ (Recall)
+
+[CHỜ THỰC NGHIỆM RECALL]
+
+Chỉ số F1-score
+
+[CHỜ THỰC NGHIỆM F1-SCORE]
+
+Tỷ lệ chấp nhận sai (False Acceptance Rate - FAR)
+
+[CHỜ THỰC NGHIỆM FAR]
+
+Tỷ lệ từ chối sai (False Rejection Rate - FRR)
+
+[CHỜ THỰC NGHIỆM FRR]
+
+3.3. Kết quả chống giả mạo
+
+Hiệu năng của mạng MiniFASNetV2 được đánh giá trên các kịch bản giả mạo 2D, bao gồm sử dụng ảnh in trên giấy và phát lại video trên màn hình điện thoại. Các chỉ số APCER và BPCER được sử dụng để đánh giá khả năng phân biệt giữa mẫu hợp lệ và mẫu giả mạo của hệ thống. Kết quả thực nghiệm sẽ được bổ sung sau khi hoàn thành quá trình đánh giá trên tập dữ liệu và các điều kiện thử nghiệm được xác định.
+
+3.4. Hiệu năng trên Raspberry Pi 5
+
+Hiệu năng xử lý của hệ thống trên Raspberry Pi 5 được đánh giá thông qua thời gian xử lý mỗi yêu cầu điểm danh và mức sử dụng tài nguyên phần cứng trong quá trình suy luận AI. Các chỉ số latency, CPU và RAM sẽ được ghi nhận trong điều kiện thử nghiệm xác định và bổ sung vào kết quả sau khi hoàn thành quá trình đo lường. Việc đánh giá này nhằm xác định khả năng đáp ứng của thiết bị biên đối với quy trình điểm danh được triển khai.
+
+3.5. Thảo luận và hạn chế
+
+Cơ chế điểm danh chạm nút trên Kiosk UI có một số ưu điểm về mặt thiết kế. Thứ nhất, quá trình thu nhận hình ảnh và suy luận AI chỉ được kích hoạt sau khi sinh viên chủ động thực hiện thao tác điểm danh, qua đó hạn chế việc thực hiện suy luận liên tục đối với các đối tượng không tham gia điểm danh. Thứ hai, cơ chế kích hoạt chủ động giúp giảm khả năng hệ thống xử lý nhầm các đối tượng chỉ đi ngang qua khu vực Kiosk. Thứ ba, việc yêu cầu sinh viên tiếp cận và tương tác trực tiếp với Kiosk có thể hỗ trợ duy trì điều kiện thu nhận khuôn mặt tương đối phù hợp cho quá trình nhận diện.
+
+Tuy nhiên, hệ thống vẫn tồn tại một số hạn chế. Thứ nhất, quy trình yêu cầu sinh viên thực hiện thao tác chạm nút nên chưa hoàn toàn tự động. Thứ hai, MiniFASNetV2 trong nghiên cứu hiện tập trung vào kiểm tra chống giả mạo 2D; khả năng chống lại các hình thức giả mạo ba chiều như mặt nạ 3D chưa được đánh giá trong phạm vi nghiên cứu này. Thứ ba, SQLite phù hợp với mô hình triển khai cục bộ và quy mô dữ liệu của hệ thống hiện tại, nhưng khả năng đáp ứng khi mở rộng lên quy mô triển khai lớn hơn cần được đánh giá thêm thông qua các thử nghiệm về tải và truy cập đồng thời.
+
+4. KẾT LUẬN (CONCLUSIONS)
+
+Nghiên cứu đã thiết kế và triển khai giải pháp phần mềm quản lý điểm danh tích hợp SmartAttendance trên vi máy tính Raspberry Pi 5. Hệ thống kết hợp các chức năng quản lý học thuật với quy trình điểm danh chạm nút trên Kiosk UI, trong đó thao tác của người dùng kích hoạt quá trình thu nhận hình ảnh và xử lý sinh trắc học tại thiết bị biên. Thành phần nhận diện khuôn mặt sử dụng InsightFace (buffalo_l), kết hợp với MiniFASNetV2 được triển khai thông qua ONNX Runtime để hỗ trợ kiểm tra chống giả mạo 2D.
+
+Với kiến trúc xử lý cục bộ, hệ thống có khả năng thực hiện các chức năng quản lý đào tạo và xử lý dữ liệu điểm danh mà không yêu cầu hình ảnh khuôn mặt phải được truyền đến dịch vụ xử lý đám mây trong quy trình điểm danh. Cách tiếp cận này cho thấy tính khả thi của việc triển khai một hệ thống điểm danh dựa trên nhận diện khuôn mặt tại biên, đồng thời có thể hạn chế nhu cầu truyền dữ liệu sinh trắc học ra ngoài thiết bị trong quá trình xử lý.
+
+Trong các giai đoạn tiếp theo, nghiên cứu có thể tập trung vào việc bổ sung các cảm biến khoảng cách hoặc chiều sâu 3D nhằm tăng khả năng đánh giá tính sống trước các hình thức giả mạo phức tạp hơn. Bên cạnh đó, việc ứng dụng các bộ tăng tốc AI/NPU tại biên như Hailo-8 hoặc Coral Edge TPU có thể được xem xét để đánh giá khả năng cải thiện hiệu năng xử lý. Cuối cùng, cần tiến hành các thử nghiệm dài hạn với quy mô người dùng và điều kiện môi trường đa dạng hơn trong bối cảnh giảng đường thực tế để đánh giá đầy đủ hiệu năng và khả năng mở rộng của hệ thống.
+
+TÀI LIỆU THAM KHẢO (REFERENCES)
+
+[1] J. Deng, J. Guo, N. Xue, and S. Zafeiriou, "ArcFace: Additive angular margin loss for deep face recognition," in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2019, pp. 4690–4699.
+
+[2] O. M. Parkhi, A. Vedaldi, and A. Zisserman, "Deep face recognition," in British Machine Vision Conference (BMVC), 2015.
+
+[3] F. Schroff, D. Kalenichenko, and J. Philbin, "FaceNet: A unified embedding for face recognition and clustering," in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2015, pp. 815–823.
+
+[4] S. Zhang, X. Wang, A. Liu, C. Zhao, J. Wan, and S. Z. Li, "CASIA-SURF: A large-scale multi-modal benchmark for face anti-spoofing," IEEE Transactions on Biometrics, Behavior, and Identity Science, vol. 2, no. 2, pp. 182–193, 2020.
+
+[5] Z. Zhang, J. Yan, S. Liu, Z. Lei, D. Yi, and S. Z. Li, "A surface defect detection algorithm based on deep learning," IEEE Transactions on Information Forensics and Security, vol. 9, no. 11, pp. 1980–1990, 2014.
+
+[6] A. Lucena, A. Junior, V. Moia, R. Souza, E. Valle, and R. Lotufo, "Transfer learning using convolutional neural networks for face anti-spoofing," in IEEE International Conference on Image Processing (ICIP), 2017, pp. 27–31.
+
+[7] X. Tan, Y. Li, J. Liu, and L. Jiang, "Face liveness detection using dynamic texture," IEEE Transactions on Image Processing, vol. 19, no. 8, pp. 2046–2053, 2010.
+
+[8] Y. Atoum, Y. Liu, A. Amin Jourabloo, and X. Liu, "Face anti-spoofing using patch and depth-based CNNs," in IEEE International Joint Conference on Biometrics (IJCB), 2017, pp. 319–328.
+
+[9] A. Howard, M. Sandler, G. Chu, L. C. Chen, B. Chen, M. Tan, W. Wang, Y. Yukun, R. Vasudevan, Q. V. Le, and H. Adam, "Searching for MobileNetV3," in Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV), 2019, pp. 1314–1324.
+
+[10] N. Xiang and T. Zhang, "Edge AI-based smart attendance management system: A real-time face recognition approach," IEEE Access, vol. 9, pp. 112450–112462, 2021.
+
+[11] M. S. Kumar and R. S. Devi, "Smart attendance system using Raspberry Pi and OpenCV," International Journal of Pure and Applied Mathematics, vol. 119, no. 15, pp. 327–333, 2018.
+
+[12] R. Szegedy, W. Liu, Y. Jia, P. Sermanet, S. Reed, D. Anguelov, D. Erhan, V. Vanhoucke, and A. Rabinovich, "Going deeper with convolutions," in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2015, pp. 1–9.
+
+[13] ISO/IEC 30107-3:2017, Information technology — Biometric presentation attack detection — Part 3: Testing and reporting, International Organization for Standardization, 2017.
+
+[14] G. P. Patel and H. B. Prajapati, "Study and performance analysis of face recognition techniques on embedded edge devices," Journal of Real-Time Image Processing, vol. 18, no. 4, pp. 1205–1219, 2021.
+
+[15] S. Liu, P. Zhang, and R. Hostettler, "Resource-constrained face recognition on single-board computers," ACM Transactions on Embedded Computing Systems, vol. 20, no. 5s, pp. 1–22, 2021.
+
+[16] OpenCV Development Team, "Open Source Computer Vision Library," 2024. [Online]. Available: https://opencv.org
+
+[17] InsightFace Team, "InsightFace: 2D and 3D Face Analysis Project," 2024. [Online]. Available: https://github.com/deepinsight/insightface
+
+[18] ONNX Runtime Developers, "ONNX Runtime: Cross-platform, high performance ML inferencing and training engine," 2024. [Online]. Available: https://onnxruntime.ai

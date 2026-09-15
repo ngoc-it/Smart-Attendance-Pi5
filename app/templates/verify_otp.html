@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác thực OTP - Smart Attendance</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="mtu-header">
+                <img src="{{ url_for('static', filename='images/mtu_logo.png') }}" alt="MTU Logo" class="mtu-logo">
+                <div class="mtu-titles">
+                    <h1>Bộ Xây Dựng</h1>
+                    <h2>TRƯỜNG ĐẠI HỌC<br>XÂY DỰNG MIỀN TÂY</h2>
+                </div>
+                <div class="system-title">XÁC THỰC MÃ OTP</div>
+            </div>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-msg {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <p style="font-size: 0.85rem; color: #475569; text-align: center; margin-bottom: 20px;">
+                Mã xác thực OTP đã được gửi đến Email của bạn. Vui lòng nhập mã <strong>6 chữ số</strong> để tiếp tục đặt lại mật khẩu.
+            </p>
+
+            <form action="{{ url_for('auth.verify_otp') }}" method="POST" class="auth-form">
+                <input type="hidden" name="identifier" value="{{ identifier }}">
+
+                <div class="form-group">
+                    <label style="text-align: center; display: block;">Mã OTP (6 chữ số)</label>
+                    <input type="text" name="otp" placeholder="Mã OTP" maxlength="6" required autocomplete="off" 
+                           style="letter-spacing: 6px; font-size: 1.4rem; font-weight: 700; text-align: center; padding: 12px;">
+                </div>
+
+                <button type="submit" class="btn-login" style="margin-top: 10px;">XÁC THỰC MÃ OTP</button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 20px; font-size: 0.85rem; display: flex; justify-content: space-between;">
+                <a href="{{ url_for('auth.forgot_password') }}" style="color: #64748b; text-decoration: none;">&larr; Gửi lại mã</a>
+                <a href="{{ url_for('auth.login') }}" style="color: #2563eb; text-decoration: none; font-weight: 600;">Đăng nhập</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

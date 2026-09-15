@@ -4,17 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Kiosk Điểm Danh</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- Local System Fonts used to ensure fast offline rendering on Raspberry Pi -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/kiosk.css') }}">
     <style>
-        .session-info {
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-            color: #fff;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            text-align: center;
-            font-weight: 600;
-        }
         .btn-check.active {
             background: linear-gradient(135deg, #2ecc71, #27ae60);
             box-shadow: 0 0 20px rgba(46, 204, 113, 0.4);
@@ -38,7 +30,7 @@
 
     <div class="header">
         <h1>HỆ THỐNG ĐIỂM DANH TỰ ĐỘNG</h1>
-        <button onclick="exitApp()" class="btn-exit" title="Thoát ứng dụng">✖</button>
+        <button onclick="exitApp()" class="btn-exit" title="Thoát ứng dụng">&times;</button>
     </div>
 
     <div class="main-content">
@@ -50,7 +42,7 @@
         <div class="action-panel">
             <div id="session-info" class="session-info">Đang kiểm tra tiết học...</div>
             <button class="btn-check" id="btn-check" onclick="performCheckIn()">
-                ĐIỂM DANH
+                <span class="btn-main-text">ĐIỂM DANH</span>
             </button>
             <div class="instruction">
                 <p>1. Đứng vào trong khung hình.</p>
@@ -82,7 +74,7 @@
         function showPopup(type, title, message) {
             clearTimeout(popupTimeout);
             popup.className = `popup show ${type}-theme`;
-            popupIcon.innerHTML = type === 'success' ? '✅' : '❌';
+            popupIcon.innerHTML = type === 'success' ? '&#10004;' : '&#10006;';
             popupTitle.innerText = title;
             popupMessage.innerText = message;
             popupTimeout = setTimeout(() => {
@@ -99,18 +91,37 @@
                 if (data.status === 'active') {
                     btnCheck.classList.add('active');
                     btnCheck.disabled = false;
-                    sessionInfo.innerHTML = `<span style="color:#2ecc71">● Đang diễn ra:</span> ${data.class_name}`;
-                    btnCheck.innerHTML = `ĐIỂM DANH<br><small style="font-size:0.65rem">${data.start_time} - ${data.end_time}</small>`;
+                    sessionInfo.innerHTML = `
+                        <div class="session-status-badge active">● Đang diễn ra</div>
+                        <div class="session-class-name">${data.class_name}</div>
+                        <div class="session-time-text active"> Ca học: ${data.start_time} - ${data.end_time}</div>
+                    `;
+                    btnCheck.innerHTML = `
+                        <span class="btn-main-text">ĐIỂM DANH</span>
+                        <span class="btn-sub-text">${data.start_time} - ${data.end_time}</span>
+                    `;
                 } else if (data.status === 'upcoming') {
                     btnCheck.classList.add('upcoming');
                     btnCheck.disabled = false;
-                    sessionInfo.innerHTML = `<span style="color:#f1c40f">● Sắp diễn ra:</span> ${data.class_name}`;
-                    btnCheck.innerHTML = `CHỜ ĐẾN GIỜ<br><small style="font-size:0.65rem">Bắt đầu lúc ${data.start_time}</small>`;
+                    sessionInfo.innerHTML = `
+                        <div class="session-status-badge upcoming">● Sắp diễn ra</div>
+                        <div class="session-class-name">${data.class_name}</div>
+                        <div class="session-time-text upcoming"> Bắt đầu lúc ${data.start_time} (${data.start_time} - ${data.end_time})</div>
+                    `;
+                    btnCheck.innerHTML = `
+                        <span class="btn-main-text">CHỜ ĐẾN GIỜ</span>
+                        <span class="btn-sub-text">Bắt đầu ${data.start_time}</span>
+                    `;
                 } else {
                     btnCheck.classList.add('idle');
                     btnCheck.disabled = true;
-                    sessionInfo.innerText = "Hiện không có ca học nào";
-                    btnCheck.innerText = "ĐIỂM DANH";
+                    sessionInfo.innerHTML = `
+                        <div class="session-status-badge idle">● Nghỉ ca</div>
+                        <div class="session-class-name" style="font-size: clamp(1.1rem, 2.2vw, 1.4rem); font-weight: 600; color: #94a3b8;">Hiện không có ca học nào</div>
+                    `;
+                    btnCheck.innerHTML = `
+                        <span class="btn-main-text">ĐIỂM DANH</span>
+                    `;
                 }
             })
             .catch(err => console.error("Session update failed", err));

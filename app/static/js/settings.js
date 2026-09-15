@@ -49,3 +49,9 @@ function updateThresholdDisplay(val) {
     const output = document.getElementById('threshold-output');
     if (output) output.value = val;
 }
+
+function updateLivenessDisplay(val) {
+    const output = document.getElementById('liveness-output');
+    if (output) output.value = val;
+}
+

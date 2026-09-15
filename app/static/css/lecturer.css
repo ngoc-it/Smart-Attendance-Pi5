@@ -136,7 +136,7 @@
     border-color: #fb7185 !important;
 }
 
-/* Biểu tượng thao tác (📸, ✏️, 🗑) */
+/* Biểu tượng thao tác (Camera, Edit, Delete) */
 .action-icon-btn {
     width: 32px;
     height: 32px;
@@ -233,3 +233,94 @@
     margin-right: 6px;
     color: #94a3b8;
 }
+
+/* === INDEX & MODAL CUSTOM STYLES === */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: #4a5568;
+    font-weight: 600;
+}
+
+.back-btn:hover {
+    color: var(--primary);
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background: white;
+    padding: 30px 36px;
+    border-radius: 16px;
+    width: 92%;
+    max-width: 650px;
+    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.2);
+}
+
+.timetable-section {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid #f1f5f9;
+}
+
+.status-btn-group {
+    display: flex;
+    gap: 5px;
+}
+
+/* Tab styles */
+.tab-nav {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.tab-nav-btn {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: #718096;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.tab-nav-btn.active {
+    background: #ebf8ff;
+    color: var(--primary);
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
