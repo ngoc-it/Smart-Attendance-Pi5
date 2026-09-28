@@ -337,9 +337,19 @@ class ScheduleDBMixin:
 
     def get_class_sessions(self, class_id):
         """Lấy danh sách tất cả các buổi học cụ thể (Sessions) đã được sinh ra của một lớp kèm tên phòng."""
+        today = datetime.now().strftime('%Y-%m-%d')
         with self._get_conn() as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
+            
+            # Auto update past scheduled sessions to COMPLETED
+            cursor.execute("""
+                UPDATE class_sessions 
+                SET status = 'COMPLETED' 
+                WHERE class_id = ? AND status = 'SCHEDULED' AND session_date < ?
+            """, (class_id, today))
+            conn.commit()
+
             cursor.execute("""
                 SELECT cs.*, r.name as room_name 
                 FROM class_sessions cs 
@@ -357,6 +367,15 @@ class ScheduleDBMixin:
         with self._get_conn() as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
+            
+            # Auto update past scheduled sessions to COMPLETED
+            cursor.execute("""
+                UPDATE class_sessions 
+                SET status = 'COMPLETED' 
+                WHERE class_id = ? AND status = 'SCHEDULED' AND session_date < ?
+            """, (class_id, today))
+            conn.commit()
+
             # Lấy các buổi đã qua (từ 7 ngày trước đến hôm nay)
             cursor.execute("""
                 SELECT id, session_date, start_time, end_time, status, num_periods

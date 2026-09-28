@@ -88,7 +88,7 @@ def video_worker():
                 with shared.frame_lock:
                     shared.last_frame = frame
                 
-                time.sleep(0.01)
+                time.sleep(0.03)
 
         except Exception as e:
             log_debug(f"Critical error in video_worker: {e}")

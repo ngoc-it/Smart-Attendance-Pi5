@@ -1,0 +1,42 @@
+[0;93m2026-09-19 22:18:46.004270615 [W:onnxruntime:Default, device_discovery.cc:325 DiscoverDevicesForPlatform] GPU device discovery failed: device_discovery.cc:92 ReadFileContents Failed to open file: "/sys/class/drm/card1/device/vendor"[m
+/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/onnxruntime/capi/onnxruntime_inference_collection.py:123: UserWarning: Specified provider 'CUDAExecutionProvider' is not in available provider names.Available providers: 'AzureExecutionProvider, CPUExecutionProvider'
+  warnings.warn(
+--- Testing Filters on REAL FACE ---
+Original                 : [2.844166e-04 5.618513e-03 9.940971e-01] - Class 2
+Gaussian Blur (3,3)      : [2.6732683e-04 5.3048995e-03 9.9442780e-01] - Class 2
+Gaussian Blur (5,5)      : [2.6472236e-04 5.2657477e-03 9.9446952e-01] - Class 2
+Gaussian Blur (7,7)      : [2.634428e-04 5.251502e-03 9.944851e-01] - Class 2
+Median Blur 3            : [2.7004303e-04 5.3445096e-03 9.9438548e-01] - Class 2
+Median Blur 5            : [2.6791057e-04 5.3097894e-03 9.9442226e-01] - Class 2
+Bilateral Filter         : [2.811260e-04 5.545311e-03 9.941736e-01] - Class 2
+Down-Up (40x40)          : [2.6666815e-04 5.3082397e-03 9.9442506e-01] - Class 2
+Down-Up (20x20)          : [2.6272133e-04 5.2224440e-03 9.9451482e-01] - Class 2
+Low Contrast (0.5x)      : [2.1582939e-04 4.7380626e-03 9.9504614e-01] - Class 2
+Low Contrast (0.8x)      : [2.7153592e-04 5.3922352e-03 9.9433619e-01] - Class 2
+Grayscale                : [2.8650896e-04 5.5719418e-03 9.9414152e-01] - Class 2
+Gaussian Noise           : [2.8549976e-04 5.6583378e-03 9.9405611e-01] - Class 2
+Sharpened                : [3.1651667e-04 6.1508901e-03 9.9353254e-01] - Class 2
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+model ignore: /home/nkn0901/.insightface/models/buffalo_l/1k3d68.onnx landmark_3d_68
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+model ignore: /home/nkn0901/.insightface/models/buffalo_l/2d106det.onnx landmark_2d_106
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/nkn0901/.insightface/models/buffalo_l/det_10g.onnx detection [1, 3, '?', '?'] 127.5 128.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+model ignore: /home/nkn0901/.insightface/models/buffalo_l/genderage.onnx genderage
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/nkn0901/.insightface/models/buffalo_l/w600k_r50.onnx recognition ['None', 3, 112, 112] 127.5 127.5
+set det-size: (640, 640)
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+model ignore: /home/nkn0901/.insightface/models/buffalo_l/1k3d68.onnx landmark_3d_68
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+model ignore: /home/nkn0901/.insightface/models/buffalo_l/2d106det.onnx landmark_2d_106
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /home/nkn0901/.insightface/models/buffalo_l/det_10g.onnx detection [1, 3, '?', '?'] 127.5 128.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+model ignore: /home/nkn0901/.insightface/models/buffalo_l/genderage.onnx genderage
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+model ignore: /home/nkn0901/.insightface/models/buffalo_l/w600k_r50.onnx recognition
+set det-size: (640, 640)
+Tight Crop (Scale 1.5)   : [2.8072996e-04 5.2718655e-03 9.9444735e-01] - Class 2
+Tight Crop (Scale 1.0)   : [2.9503982e-04 5.8840592e-03 9.9382097e-01] - Class 2

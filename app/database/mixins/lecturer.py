@@ -23,8 +23,9 @@ class LecturerDBMixin:
         """Tạo mới một tài khoản giảng viên. Nếu mật khẩu rỗng sẽ dùng mật khẩu mặc định."""
         from config import Config
         must_change = 0
-        if not password or not password.strip():
-            password = getattr(Config, 'DEFAULT_LECTURER_PASSWORD', '123456')
+        default_pw = getattr(Config, 'DEFAULT_LECTURER_PASSWORD', '123456')
+        if not password or not password.strip() or password == default_pw:
+            password = default_pw
             must_change = 1
             
         hashed_pw = self.hash_password(password)

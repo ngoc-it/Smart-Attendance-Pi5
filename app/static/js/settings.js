@@ -37,10 +37,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Camera status polling (optional enhancement)
-    const statusDot = document.querySelector('.camera-status-dot');
-    if (statusDot) {
-        // Here you could add a real-time health check if endpoint exists
+    // Initialize liveness display color on load
+    const livenessInput = document.querySelector('input[name="liveness_threshold"]');
+    if (livenessInput) {
+        updateLivenessDisplay(livenessInput.value);
     }
 });
 
@@ -52,6 +52,16 @@ function updateThresholdDisplay(val) {
 
 function updateLivenessDisplay(val) {
     const output = document.getElementById('liveness-output');
-    if (output) output.value = val;
+    if (output) {
+        const num = parseFloat(val);
+        if (num <= 0) {
+            output.value = "0.00 (Tắt)";
+            output.style.color = "#e53e3e";
+        } else {
+            output.value = num.toFixed(2);
+            output.style.color = "var(--primary)";
+        }
+    }
 }
+
 

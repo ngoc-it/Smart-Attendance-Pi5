@@ -436,9 +436,15 @@ def manual_action():
 @attendance_bp.route('/images/<path:filename>')
 @login_required
 def serve_image(filename):
-    from flask import send_from_directory
+    from flask import send_from_directory, current_app
+    from werkzeug.exceptions import NotFound
     from config import Config
-    return send_from_directory(Config.LOG_IMAGES_DIR, filename)
+    import os
+    
+    try:
+        return send_from_directory(Config.LOG_IMAGES_DIR, filename)
+    except NotFound:
+        return send_from_directory(os.path.join(current_app.root_path, 'static', 'images'), 'placeholder.jpg')
 
 @attendance_bp.route('/api/attendance/manual', methods=['POST'])
 @lecturer_required

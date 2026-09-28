@@ -194,8 +194,14 @@ class ClassStudentDBMixin:
                 cursor.execute("""
                     SELECT start_time, end_time FROM class_sessions 
                     WHERE class_id = ? AND session_date = DATE('now', 'localtime') 
-                    AND status = 'SCHEDULED'
-                    AND time('now', 'localtime') BETWEEN time(start_time, '-15 minutes') AND end_time
+                    ORDER BY 
+                        CASE 
+                            WHEN time('now', 'localtime') BETWEEN start_time AND end_time THEN 0
+                            WHEN time('now', 'localtime') BETWEEN time(start_time, '-30 minutes') AND start_time THEN 1
+                            WHEN time('now', 'localtime') BETWEEN end_time AND time(end_time, '+30 minutes') THEN 2
+                            ELSE 3 
+                        END ASC,
+                        ABS(strftime('%s', time('now', 'localtime')) - strftime('%s', start_time)) ASC
                     LIMIT 1
                 """, (class_id,))
                 session_now = cursor.fetchone()

@@ -4470,3 +4470,37 @@ Traceback (most recent call last):
     elif isinstance(s, (list, tuple)):
                  ^^^^^^^
 ValueError: dictionary update sequence element #0 has length 14; 2 is required
+ERROR:app:Exception on /admin/lecturer [POST]
+Traceback (most recent call last):
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/nkn0901/SmartAttendance/app/core/auth_utils.py", line 17, in decorated_function
+    return f(*args, **kwargs)
+  File "/home/nkn0901/SmartAttendance/app/web/routes_admin.py", line 92, in add_lecturer
+    password = getattr(Config, 'DEFAULT_LECTURER_PASSWORD', '123456')
+                       ^^^^^^
+NameError: name 'Config' is not defined
+ERROR:app:Exception on /admin/lecturer [POST]
+Traceback (most recent call last):
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/home/nkn0901/SmartAttendance/env/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/nkn0901/SmartAttendance/app/core/auth_utils.py", line 17, in decorated_function
+    return f(*args, **kwargs)
+  File "/home/nkn0901/SmartAttendance/app/web/routes_admin.py", line 92, in add_lecturer
+    password = getattr(Config, 'DEFAULT_LECTURER_PASSWORD', '123456')
+                       ^^^^^^
+NameError: name 'Config' is not defined

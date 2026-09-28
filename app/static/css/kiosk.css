@@ -81,6 +81,7 @@ body {
     height: 100%;
     object-fit: cover;
     border-right: 2px solid #1e3c72;
+    filter: brightness(1.25) contrast(1.05); /* Tăng độ sáng màn hình */
 }
 
 /* Khung hướng dẫn mặt Responsive - Dáng đứng (Portrait) */

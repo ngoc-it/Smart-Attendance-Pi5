@@ -2,16 +2,14 @@ import cv2
 import numpy as np
 import os
 import time
-from ultralytics import YOLO
 from insightface.app import FaceAnalysis
+from insightface.app.common import Face
 from config import Config
 from app.core import shared
 
 class FaceEngine:
     def __init__(self, db):
         self.db = db
-        self.detector = YOLO(Config.YOLO_MODEL_PATH)
-    
     # CHỈ nạp module detection và recognition để tiết kiệm 60% RAM
         self.app = FaceAnalysis(
             name='buffalo_l', 
@@ -65,27 +63,45 @@ class FaceEngine:
                     print(f"Lỗi khi tải embedding {file}: {e}")
 
     def recognize(self, frame):
-        """Nhan dien khuon mat tren mot khung hinh"""
-        # Su dung InsightFace truc tiep de lay ca Box va Embedding
-        faces = self.app.get(frame)
+        """Nhan dien khuon mat tren mot khung hinh (Luồng tối ưu tách biệt Liveness)"""
         output = []
-        
-        for face in faces:
-            # Trich xuat toa do va embedding da chuan hoa
-            x1, y1, x2, y2 = face.bbox.astype(int)
-            emb = face.normed_embedding
+        bboxes, kpss = self.app.models['detection'].detect(frame, max_num=0, metric='default')
+        if bboxes.shape[0] == 0:
+            return output
             
-            # Chạy chống giả mạo (Anti-Spoofing)
+        for i in range(bboxes.shape[0]):
+            bbox = bboxes[i, 0:4]
+            det_score = bboxes[i, 4]
+            kps = kpss[i] if kpss is not None else None
+            x1, y1, x2, y2 = bbox.astype(int)
+            
+            # 1. Chạy chống giả mạo (Anti-Spoofing) TRƯỚC
             is_real, liveness_score, liveness_label = self.liveness_detector.predict(
                 frame, [x1, y1, x2, y2], threshold=self.liveness_threshold
             )
             
+            # Nếu giả mạo, bỏ qua bước trích xuất đặc trưng cực nặng
+            if not is_real:
+                output.append({
+                    "id": "Unknown",
+                    "box": (x1, y1, x2, y2),
+                    "confidence": 0.0,
+                    "liveness": liveness_label,
+                    "is_real": is_real
+                })
+                continue
+                
+            # 2. Nếu người thật, MỚI chạy ArcFace trích xuất vector
+            face = Face(bbox=bbox, kps=kps, det_score=det_score)
+            self.app.models['recognition'].get(frame, face)
+            emb = face.normed_embedding
+            
             best_id = "Unknown"
             max_sim = -1.0
             
-            # So sanh Cosine Similarity (Dot Product) voi database
+            # So sanh Cosine Similarity
             for student_id, known_emb in self.known_embeddings.items():
-                sim = np.dot(emb, known_emb)
+                sim = float(np.dot(emb, known_emb))
                 if sim > max_sim:
                     max_sim = sim
                     best_id = student_id
@@ -221,27 +237,29 @@ class FaceEngine:
             "latency_matching_ms": 0.0
         }
 
-        # 1. Detection & Feature Embedding via InsightFace
-        t_face_start = time.time()
-        faces = self.app.get(frame)
-        t_face_end = time.time()
-        meta["latency_face_recognition_ms"] = (t_face_end - t_face_start) * 1000.0
+        # 1. Detection via InsightFace (RetinaFace)
+        t_det_start = time.time()
+        bboxes, kpss = self.app.models['detection'].detect(frame, max_num=1, metric='default')
         
-        if len(faces) == 0:
+        if bboxes.shape[0] == 0:
             meta["recognition_result"] = "NO_FACE"
+            meta["latency_face_recognition_ms"] = (time.time() - t_det_start) * 1000.0
             msg = "Không tìm thấy khuôn mặt nào!"
             return (False, msg, None, meta) if return_meta else (False, msg, None)
             
-        if len(faces) > 1:
+        if bboxes.shape[0] > 1:
             meta["recognition_result"] = "MULTIPLE_FACES"
+            meta["latency_face_recognition_ms"] = (time.time() - t_det_start) * 1000.0
             msg = "Phát hiện nhiều người! Chỉ 1 người được phép điểm danh."
             return (False, msg, None, meta) if return_meta else (False, msg, None)
             
         # Có duy nhất 1 khuôn mặt
-        face = faces[0]
-        x1, y1, x2, y2 = face.bbox.astype(int)
+        bbox = bboxes[0, 0:4]
+        det_score = bboxes[0, 4]
+        kps = kpss[0] if kpss is not None else None
+        x1, y1, x2, y2 = bbox.astype(int)
         
-        # 2. Anti-Spoofing Check (MiniFASNetV2)
+        # 2. Anti-Spoofing Check (MiniFASNetV2) TRƯỚC KHI trích xuất đặc trưng
         t_live_start = time.time()
         is_real, liveness_score, liveness_label = self.liveness_detector.predict(
             frame, [x1, y1, x2, y2], threshold=self.liveness_threshold
@@ -253,13 +271,23 @@ class FaceEngine:
         meta["liveness_label"] = str(liveness_label)
         
         if not is_real:
+            # Nếu giả mạo, ta bỏ qua phần ArcFace, do đó latency chỉ tốn cho Detection
+            meta["latency_face_recognition_ms"] = (t_live_start - t_det_start) * 1000.0
             attack_type = "Ảnh chụp/Giấy in" if liveness_label == "Print-attack" else "Màn hình điện thoại/Video"
             meta["attack_type"] = liveness_label
             meta["recognition_result"] = "SPOOF_ATTACK"
             msg = f"Cảnh báo giả mạo! Phát hiện {attack_type} (độ tin cậy: {liveness_score:.2%})"
             return (False, msg, None, meta) if return_meta else (False, msg, None)
             
-        # 3. Vector Feature Extraction & Cosine Similarity Matching
+        # 3. Vector Feature Extraction (ArcFace) & Cosine Similarity Matching
+        face = Face(bbox=bbox, kps=kps, det_score=det_score)
+        t_rec_start = time.time()
+        self.app.models['recognition'].get(frame, face)
+        t_rec_end = time.time()
+        
+        # Tổng thời gian Face Recognition = thời gian Detection + thời gian Recognition
+        meta["latency_face_recognition_ms"] = ((t_rec_end - t_rec_start) + (t_live_start - t_det_start)) * 1000.0
+        
         emb = face.normed_embedding
         best_id = "Unknown"
         max_sim = -1.0

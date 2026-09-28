@@ -1,0 +1,2 @@
+Input: input, shape: ['batch', 3, 80, 80], type: tensor(float)
+Output: output, shape: ['batch', 3], type: tensor(float)

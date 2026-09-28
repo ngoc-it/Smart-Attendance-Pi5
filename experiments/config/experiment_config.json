@@ -4,7 +4,7 @@
         "camera": "Sony IMX708 Camera Module 3",
         "os": "Linux-6.12.75+rpt-rpi-2712-aarch64-with-glibc2.41",
         "python_version": "3.13.5",
-        "git_commit": "a903283941aff72ba5c2cb42a34a9bcc5a77d7c4"
+        "git_commit": "bca4515664504ed3921df13d4f8486fb49c4bff6"
     },
     "library_versions": {
         "opencv": "4.10.0",
@@ -19,6 +19,6 @@
     },
     "experiment_setup": {
         "logger_version": "1.0.0",
-        "boot_timestamp": "2026-09-15 22:47:36"
+        "boot_timestamp": "2026-09-20 21:21:06"
     }
 }

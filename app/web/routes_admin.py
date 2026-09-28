@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from config import Config
 from app import db
-from app.core.auth_utils import admin_required
+from app.core.auth_utils import admin_required, login_required
+from app.core.utils import get_system_stats
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -89,7 +91,7 @@ def add_lecturer():
     data = request.json
     password = data.get('password')
     if not password or not password.strip():
-        password = getattr(Config, 'DEFAULT_LECTURER_PASSWORD', 'SmartAttendance@2026')
+        password = getattr(Config, 'DEFAULT_LECTURER_PASSWORD', '123456')
     success = db.create_lecturer(data['username'], password, data['name'], data.get('code'))
     if success:
         return jsonify({"status": "success", "message": "Thêm giảng viên thành công"})
@@ -152,6 +154,8 @@ def get_class_students(class_id):
     for s in students_raw:
         if isinstance(s, dict):
             students_list.append(s)
+        elif hasattr(s, 'keys'):
+            students_list.append(dict(s))
         elif isinstance(s, (list, tuple)):
             students_list.append({
                 "id": s[0],
@@ -233,7 +237,13 @@ def unassign_class():
 @admin_required
 def settings_page():
     settings = db.get_settings()
-    return render_template('admin_settings.html', settings=settings)
+    sys_stats = get_system_stats()
+    return render_template('admin_settings.html', settings=settings, sys_stats=sys_stats)
+
+@admin_bp.route('/system_status', methods=['GET'])
+@login_required
+def get_system_status_api():
+    return jsonify({"status": "success", "sys_stats": get_system_stats()})
 
 @admin_bp.route('/settings/update', methods=['POST'])
 @admin_required

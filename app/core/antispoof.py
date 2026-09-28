@@ -4,52 +4,35 @@ import onnxruntime as ort
 import os
 
 class CropImage:
-    @staticmethod
-    def _get_new_box(src_w, src_h, bbox, scale):
-        # bbox is expected to be [x, y, w, h]
-        x = bbox[0]
-        y = bbox[1]
-        box_w = bbox[2]
-        box_h = bbox[3]
-
-        scale = min((src_h-1)/box_h, min((src_w-1)/box_w, scale))
-
-        new_width = box_w * scale
-        new_height = box_h * scale
-        center_x, center_y = box_w/2+x, box_h/2+y
-
-        left_top_x = center_x-new_width/2
-        left_top_y = center_y-new_height/2
-        right_bottom_x = center_x+new_width/2
-        right_bottom_y = center_y+new_height/2
-
-        if left_top_x < 0:
-            right_bottom_x -= left_top_x
-            left_top_x = 0
-
-        if left_top_y < 0:
-            right_bottom_y -= left_top_y
-            left_top_y = 0
-
-        if right_bottom_x > src_w-1:
-            left_top_x -= right_bottom_x-src_w+1
-            right_bottom_x = src_w-1
-
-        if right_bottom_y > src_h-1:
-            left_top_y -= right_bottom_y-src_h+1
-            right_bottom_y = src_h-1
-
-        return int(left_top_x), int(left_top_y), int(right_bottom_x), int(right_bottom_y)
-
     def crop(self, org_img, bbox, scale, out_w, out_h, crop=True):
         if not crop:
             dst_img = cv2.resize(org_img, (out_w, out_h))
         else:
-            src_h, src_w, _ = np.shape(org_img)
-            left_top_x, left_top_y, right_bottom_x, right_bottom_y = self._get_new_box(src_w, src_h, bbox, scale)
-
-            img = org_img[left_top_y: right_bottom_y+1, left_top_x: right_bottom_x+1]
-            dst_img = cv2.resize(img, (out_w, out_h))
+            x, y, w, h = bbox
+            center_x = x + w / 2.0
+            center_y = y + h / 2.0
+            b_w = max(w, h)
+            b_h = max(w, h)
+            size = int(b_w * scale)
+            x0 = int(center_x - size / 2.0)
+            y0 = int(center_y - size / 2.0)
+            x1 = x0 + size
+            y1 = y0 + size
+            
+            src = np.array([
+                [x0, y0],
+                [x0, y1],
+                [x1, y1],
+                [x1, y0]
+            ], np.float32)
+            dst = np.array([
+                [0, 0],
+                [0, out_h - 1],
+                [out_w - 1, out_h - 1],
+                [out_w - 1, 0]
+            ], np.float32)
+            m = cv2.getPerspectiveTransform(src, dst)
+            dst_img = cv2.warpPerspective(org_img, m, (out_w, out_h))
         return dst_img
 
 
@@ -64,7 +47,7 @@ class AntiSpoofDetector:
         self.input_name = self.session.get_inputs()[0].name
         self.cropper = CropImage()
 
-    def predict(self, frame, bbox_xyxy, scale=2.7, threshold=0.6):
+    def predict(self, frame, bbox_xyxy, scale=1.5, threshold=0.6):
         """
         Predict if the face in the bounding box is Real or Spoof.
         
@@ -81,17 +64,30 @@ class AntiSpoofDetector:
         """
         # Convert bbox from [x1, y1, x2, y2] to [x, y, w, h]
         x1, y1, x2, y2 = bbox_xyxy
-        x = x1
-        y = y1
         w = max(1, x2 - x1)
         h = max(1, y2 - y1)
-        bbox_xywh = [x, y, w, h]
+        center_x = x1 + w / 2.0
+        center_y = y1 + h / 2.0
+        
+        # Heuristically adapt InsightFace bbox (which includes whole head) 
+        # to match OpenCV SSD bbox (which is tighter on height but slightly wider on width)
+        # This matches the training data of MiniFASNet.
+        new_w = w * 1.17
+        new_h = h * 0.87
+        new_center_y = center_y + (h * 0.11)
+        
+        new_x = int(center_x - new_w / 2.0)
+        new_y = int(new_center_y - new_h / 2.0)
+        new_w = int(new_w)
+        new_h = int(new_h)
+        
+        bbox_xywh = [new_x, new_y, new_w, new_h]
 
         # Crop and resize
         cropped_face = self.cropper.crop(frame, bbox_xywh, scale, out_w=80, out_h=80)
 
-        # Preprocess: normalize and transpose to NCHW
-        img = cropped_face.astype(np.float32) / 255.0
+        # Preprocess: DO NOT normalize by 255.0! The original model was trained on 0-255 range.
+        img = cropped_face.astype(np.float32)
         img = img.transpose((2, 0, 1))  # (80, 80, 3) -> (3, 80, 80)
         img = np.expand_dims(img, axis=0)  # Add batch dim -> (1, 3, 80, 80)
 
@@ -103,16 +99,19 @@ class AntiSpoofDetector:
         exp_outputs = np.exp(raw_outputs - np.max(raw_outputs))
         probabilities = exp_outputs / np.sum(exp_outputs)
 
-        live_score = float(probabilities[0])
-        print_score = float(probabilities[1])
-        replay_score = float(probabilities[2])
+        # Index 1 is Live (Real Face), Index 0 and 2 are Spoof
+        live_score = float(probabilities[1])
 
         # Get predicted label
         pred_class = np.argmax(probabilities)
-        labels = ["Live", "Print-attack", "Replay-attack"]
+        labels = ["Spoof", "Live", "Spoof"]
         label = labels[pred_class]
 
+        # If threshold <= 0, anti-spoofing is disabled (always consider real)
+        if threshold <= 0:
+            return True, live_score, "Disabled"
+
         # A face is considered real if it classifies as Live and has score above threshold
-        is_real = (pred_class == 0) and (live_score >= threshold)
+        is_real = (pred_class == 1) and (live_score >= threshold)
 
         return is_real, live_score, label

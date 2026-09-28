@@ -169,8 +169,16 @@ function saveModal() {
 
 function apiCall(url, method, body, onSuccess) {
     fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-        .then(r => r.json()).then(d => { if (d.status === 'success') { closeModal(); if (onSuccess) onSuccess(); } else { alert('Lỗi: ' + d.message); } })
-        .catch(err => alert('Lỗi kết nối server!'));
+        .then(async r => {
+            const d = await r.json().catch(() => ({ status: 'error', message: 'Lỗi phản hồi từ máy chủ (HTTP ' + r.status + ')' }));
+            if (r.ok && d.status === 'success') {
+                closeModal();
+                if (onSuccess) onSuccess();
+            } else {
+                alert('Lỗi: ' + (d.message || 'Thao tác không thành công'));
+            }
+        })
+        .catch(err => alert('Lỗi kết nối server: ' + (err.message || 'Không thể gửi yêu cầu')));
 }
 
 document.addEventListener('DOMContentLoaded', function () {

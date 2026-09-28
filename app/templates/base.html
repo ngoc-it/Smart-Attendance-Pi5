@@ -27,6 +27,16 @@
                 <span class="indicator-dot blinking"></span>
                 <span class="indicator-text">Hệ thống AI: Hoạt động</span>
             </div>
+
+            <div class="status-indicator pi-temp-badge" id="header-pi-temp-wrapper" style="margin-left: 10px; background: rgba(255,255,255,0.12); padding: 5px 12px; border-radius: 20px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; color: #fff; border: 1px solid rgba(255,255,255,0.2);" title="Nhiệt độ CPU Raspberry Pi">
+                <i class="fa-solid fa-temperature-half" id="header-pi-temp-icon" style="color: #38a169;"></i>
+                <span>Nhiệt độ Pi: <strong id="header-pi-temp-val">--°C</strong></span>
+            </div>
+
+            <div class="status-indicator pi-ram-badge" id="header-ram-wrapper" style="margin-left: 8px; background: rgba(255,255,255,0.12); padding: 5px 12px; border-radius: 20px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; color: #fff; border: 1px solid rgba(255,255,255,0.2);" title="Dung lượng RAM đang sử dụng">
+                <i class="fa-solid fa-memory" id="header-ram-icon" style="color: #38a169;"></i>
+                <span>RAM: <strong id="header-ram-val">--%</strong></span>
+            </div>
             
             <div class="user-profile-wrapper" style="position: relative;">
                 <div class="user-profile" onclick="toggleUserDropdown(event)" style="cursor: pointer;" title="Tài khoản cá nhân">
@@ -179,17 +189,18 @@
             if (localStorage.getItem('sidebar-collapsed') === 'true') {
                 document.getElementById('sidebar').classList.add('collapsed');
             }
-            {% if session.get('must_change_password') %}
-            openChangePasswordModal();
-            const errBox = document.getElementById('cp-error-msg');
-            if (errBox) {
-                errBox.innerText = 'Bạn đang sử dụng mật khẩu mặc định ban đầu. Vui lòng đổi mật khẩu mới để bảo mật tài khoản!';
-                errBox.style.display = 'block';
-                errBox.style.background = '#fffbe6';
-                errBox.style.color = '#d48806';
-                errBox.style.borderColor = '#ffe58f';
+            const mustChangePassword = JSON.parse("{{ 'true' if session.get('must_change_password') else 'false' }}");
+            if (mustChangePassword) {
+                openChangePasswordModal();
+                const errBox = document.getElementById('cp-error-msg');
+                if (errBox) {
+                    errBox.innerText = 'Bạn đang sử dụng mật khẩu mặc định ban đầu. Vui lòng đổi mật khẩu mới để bảo mật tài khoản!';
+                    errBox.style.display = 'block';
+                    errBox.style.background = '#fffbe6';
+                    errBox.style.color = '#d48806';
+                    errBox.style.borderColor = '#ffe58f';
+                }
             }
-            {% endif %}
         });
 
         // User Profile Dropdown logic
@@ -281,6 +292,64 @@
                 errBox.style.display = 'block';
             });
         }
+
+        // Tự động cập nhật nhiệt độ & RAM Raspberry Pi
+        function fetchPiSystemStatus() {
+            fetch('/admin/system_status')
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'success' && d.sys_stats) {
+                        const temp = d.sys_stats.cpu_temp;
+                        const tempColor = d.sys_stats.temp_color || '#38a169';
+                        const tempStatusText = d.sys_stats.temp_status_text || 'Bình thường';
+
+                        // Cập nhật Nhiệt độ trên Header
+                        const headerTempVal = document.getElementById('header-pi-temp-val');
+                        const headerTempIcon = document.getElementById('header-pi-temp-icon');
+                        if (headerTempVal) headerTempVal.innerText = (temp !== null && temp !== undefined) ? temp + '°C' : 'N/A';
+                        if (headerTempIcon) headerTempIcon.style.color = tempColor;
+
+                        // Cập nhật Nhiệt độ trên trang Cấu hình
+                        const settingsTempDisp = document.getElementById('pi-temp-display');
+                        const settingsTempStatus = document.getElementById('pi-temp-status');
+                        const settingsTempIcon = document.getElementById('pi-temp-icon');
+                        if (settingsTempDisp) settingsTempDisp.innerText = (temp !== null && temp !== undefined) ? temp + ' °C' : 'Không xác định';
+                        if (settingsTempStatus) {
+                            settingsTempStatus.innerText = tempStatusText;
+                            settingsTempStatus.style.color = tempColor;
+                        }
+                        if (settingsTempIcon) settingsTempIcon.style.color = tempColor;
+
+                        // Cập nhật RAM
+                        if (d.sys_stats.ram) {
+                            const ram = d.sys_stats.ram;
+                            const headerRamVal = document.getElementById('header-ram-val');
+                            const headerRamIcon = document.getElementById('header-ram-icon');
+                            if (headerRamVal) headerRamVal.innerText = ram.percent + '%';
+                            if (headerRamIcon) headerRamIcon.style.color = ram.color;
+
+                            const settingsRamDisp = document.getElementById('pi-ram-display');
+                            const settingsRamStatus = document.getElementById('pi-ram-status');
+                            const settingsRamIcon = document.getElementById('pi-ram-icon');
+                            if (settingsRamDisp) settingsRamDisp.innerText = ram.text;
+                            if (settingsRamStatus) {
+                                settingsRamStatus.innerText = ram.status_text;
+                                settingsRamStatus.style.color = ram.color;
+                            }
+                            if (settingsRamIcon) settingsRamIcon.style.color = ram.color;
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const userRole = "{{ session.get('role', '') }}";
+            if (userRole) {
+                fetchPiSystemStatus();
+                setInterval(fetchPiSystemStatus, 5000);
+            }
+        });
     </script>
     {% block extra_js %}{% endblock %}
 </body>

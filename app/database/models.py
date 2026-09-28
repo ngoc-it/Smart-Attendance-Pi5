@@ -322,6 +322,7 @@ class AttendanceDB(
         """Cập nhật hoặc thêm mới một giá trị cấu hình hệ thống."""
         with self._get_conn() as conn:
             cursor = conn.cursor()
-            cursor.execute("UPDATE settings SET value = ? WHERE key = ?", (str(value), key))
+            cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
             conn.commit()
+
 

@@ -175,16 +175,16 @@ function apiCall(url, method, body, onSuccess) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
     })
-        .then(r => r.json())
-        .then(d => {
-            if (d.status === 'success') {
+        .then(async r => {
+            const d = await r.json().catch(() => ({ status: 'error', message: 'Lỗi phản hồi từ máy chủ (HTTP ' + r.status + ')' }));
+            if (r.ok && d.status === 'success') {
                 closeModal();
                 if (onSuccess) onSuccess();
             } else {
-                alert('Lỗi: ' + d.message);
+                alert('Lỗi: ' + (d.message || 'Thao tác không thành công'));
             }
         })
-        .catch(err => alert('Lỗi kết nối server!'));
+        .catch(err => alert('Lỗi kết nối server: ' + (err.message || 'Không thể gửi yêu cầu')));
 }
 
 function saveModal() {

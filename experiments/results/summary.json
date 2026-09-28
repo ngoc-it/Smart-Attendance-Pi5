@@ -1,0 +1,72 @@
+{
+    "query_range": {
+        "start_date": "2026-09-01",
+        "end_date": "2026-09-18",
+        "exclude_warmup": true,
+        "n_samples": 45
+    },
+    "performance": {
+        "total_latency_ms": {
+            "n": 45,
+            "mean": 1110.4,
+            "median": 1040.68,
+            "min": 686.25,
+            "max": 1771.45,
+            "std": 210.42,
+            "p90": 1340.33,
+            "p95": 1522.54,
+            "p99": 1675.34
+        },
+        "liveness_latency_ms": {
+            "n": 45,
+            "mean": 6.45,
+            "median": 5.75,
+            "min": 0.0,
+            "max": 23.35,
+            "std": 4.99,
+            "p90": 12.88,
+            "p95": 15.42,
+            "p99": 20.46
+        },
+        "face_recognition_latency_ms": {
+            "n": 45,
+            "mean": 1096.17,
+            "median": 1031.53,
+            "min": 683.35,
+            "max": 1768.92,
+            "std": 212.52,
+            "p90": 1326.97,
+            "p95": 1518.46,
+            "p99": 1669.34
+        },
+        "matching_latency_ms": {
+            "n": 45,
+            "mean": 0.01,
+            "median": 0.0,
+            "min": 0.0,
+            "max": 0.04,
+            "std": 0.01,
+            "p90": 0.03,
+            "p95": 0.03,
+            "p99": 0.04
+        },
+        "hardware_resources": {
+            "avg_cpu_percent": 0.0,
+            "peak_cpu_percent": 39.2,
+            "avg_ram_mb": 895.32,
+            "peak_ram_mb": 1025.88
+        }
+    },
+    "recognition": {
+        "status": "INSUFFICIENT_GROUND_TRUTH",
+        "message": "Insufficient ground-truth data (expected_identity is not assigned in raw logs)."
+    },
+    "antispoof": {
+        "status": "VALID",
+        "n_attack_samples": 29,
+        "n_bonafide_samples": 0,
+        "apcer_percent": 0.0,
+        "bpcer_percent": 0.0
+    },
+    "status": "SUCCESS"
+}
